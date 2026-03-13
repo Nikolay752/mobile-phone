@@ -1,4 +1,4 @@
-// system.tsx 完整修改后代码
+// system.tsx 最终修改后代码
 import React, { useState, useEffect } from "react";
 import { useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_system.less';
@@ -8,8 +8,8 @@ import button_Stu from '../layouts/button_Stu.less';
 import Hello from "@/layouts/Hello";
 import { PageAgent } from 'page-agent';
 
-// 从环境变量读取 API Key，避免硬编码
-const API_KEY = process.env.REACT_APP_DASHSCOPE_API_KEY || '';
+// 直接硬编码API Key（无需.env文件）
+const API_KEY = 'sk-39d259240a734b7983b83579a934f1bf';
 
 export default function SystemPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -19,26 +19,22 @@ export default function SystemPage() {
   const [agentAnswer, setAgentAnswer] = useState<string>('');
   const [agentLoading, setAgentLoading] = useState<boolean>(false);
 
-  // 初始化 PageAgent
+  // 初始化 PageAgent（直接使用硬编码的API Key）
   const agent = new PageAgent({
     model: 'qwen3.5-plus',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    apiKey: 'sk-39d259240a734b7983b83579a934f1bf',
+    apiKey: API_KEY, // 直接使用硬编码的Key
     language: 'zh-CN'
-  });
+  })
 
-  // 修复：还原PageAgent原生面板逻辑（避免ask方法不存在报错），保留loading状态
+  // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
   const handleAgentChat = () => {
-    if (!API_KEY) {
-      alert('未配置智能助手 API Key，请联系管理员');
-      return;
-    }
     setAgentLoading(true);
 
-    // 调用原生面板
+    // 自动打开PageAgent原生面板（核心逻辑）
     agent.panel.show();
 
-    // 面板打开后，延迟重置 loading
+    // 延迟重置loading，避免按钮一直处于加载状态
     setTimeout(() => {
       setAgentLoading(false);
     }, 1000);
@@ -59,7 +55,7 @@ export default function SystemPage() {
   // 角色跳转核心方法（仅保留手动跳转）
   const handleRoleJump = (targetRole: string, targetPath: string) => {
     const currentRole = localStorage.getItem('role');
-    console.log('当前角色：', currentRole, '目标角色：', targetRole, '目标路径：', targetPath); // 新增日志
+    console.log('当前角色：', currentRole, '目标角色：', targetRole, '目标路径：', targetPath);
 
     if (!currentRole) {
       alert('未检测到角色信息，请重新登录！');
@@ -68,27 +64,12 @@ export default function SystemPage() {
     }
 
     if (currentRole === targetRole) {
-      // 新增：强制跳转（解决navigate可能失效问题）
       navigate(targetPath, { replace: true });
       console.log('跳转成功：', targetPath);
     } else {
       alert(`无${targetRole === 'student' ? '学生' : '教师'}权限！`);
     }
   };
-
-  // 新增：处理back按钮点击，确保登录状态标识存在
-  const handleBackClick = () => {
-    // 确认localStorage中有token（登录标识），保证index页面能识别登录状态
-    const token = localStorage.getItem('token');
-    if (!token) {
-      localStorage.setItem('token', 'fake_token_for_test'); // 兜底，和index.tsx保持一致
-    }
-    // 标记登录状态为true（显式标识）
-    localStorage.setItem('isLoggedIn', 'true');
-    navigate('/'); // 返回首页（index页面）
-  };
-
-  // 移除未完成的 handleClassJump 方法（无用代码清理）
 
   useEffect(() => {
     setCurrentTime(formatTime());
@@ -109,8 +90,6 @@ export default function SystemPage() {
     setUserRole(role || '');
     setUsername(name || '');
 
-    // 移除自动跳转调用 ← 核心修改点
-
     // 清除定时器
     return () => clearInterval(timer);
   }, [navigate]);
@@ -119,8 +98,7 @@ export default function SystemPage() {
     <div className={Mainstyle.main}>
       <div className={Mainstyle.header}>
         <Hello username={username || '用户'} />
-        {/* 修改：绑定自定义的back点击事件 */}
-        <div className={button.button} onClick={handleBackClick}>
+        <div className={button.button} onClick={() => navigate('/')}>
           back
         </div>
       </div>
