@@ -8,8 +8,6 @@ import button_Stu from '../layouts/button_Stu.less';
 import Hello from "@/layouts/Hello";
 import { PageAgent } from 'page-agent';
 
-// 直接硬编码API Key（无需.env文件）
-const API_KEY = 'sk-39d259240a734b7983b83579a934f1bf';
 
 export default function SystemPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -23,21 +21,17 @@ export default function SystemPage() {
   const agent = new PageAgent({
     model: 'qwen3.5-plus',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    apiKey: API_KEY, // 直接使用硬编码的Key
+    apiKey: 'sk-39d259240a734b7983b83579a934f1bf', // 直接使用硬编码的Key
     language: 'zh-CN'
   })
 
   // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
   const handleAgentChat = () => {
     setAgentLoading(true);
-
     // 自动打开PageAgent原生面板（核心逻辑）
     agent.panel.show();
-
     // 延迟重置loading，避免按钮一直处于加载状态
-    setTimeout(() => {
-      setAgentLoading(false);
-    }, 1000);
+    setTimeout(() => {setAgentLoading(false);}, 1000);
   };
 
   // 时间格式化

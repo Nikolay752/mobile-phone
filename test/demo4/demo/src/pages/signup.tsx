@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, KeyboardEvent} from "react";
 import { useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_system.less';
 import button from '../layouts/button_back.less';
 import spanstyle from '../layouts/span_title.less';
 import button_Stu from '../layouts/button_Stu.less';
-import { KeyboardEvent } from 'react';
 import { signup } from '../services/api';
 
 export default function SignupPage() {

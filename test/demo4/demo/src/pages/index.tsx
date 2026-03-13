@@ -1,13 +1,10 @@
-import { Link, Navigate, useNavigate, Outlet } from 'umi';
-import styles from './index.less';
+import { Link, useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle.less';
 import btnstyles from '../layouts/button_login.less';
 import { useState, useEffect } from 'react';
 import { KeyboardEvent } from 'react';
-import Hello from '../layouts/Hello';
 import Items from '../layouts/items';
 import { login, LoginResponse } from '@/services/api';
-import { signup } from '@/services/api';
 
 export default function Layout() {
   // 状态管理
@@ -16,10 +13,6 @@ export default function Layout() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  // 新增：智能问答函数
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [agentLoading, setAgentLoading] = useState(false);
   // 导航和功能列表
   const { functionList } = Items();
   const navigate = useNavigate();
@@ -52,7 +45,7 @@ export default function Layout() {
     }
   };
 
-  // 副作用：时间更新 + 登录状态恢复
+  // 时间更新 + 登录状态恢复
   useEffect(() => {
     // 初始化时间
     setCurrentTime(formatTime());

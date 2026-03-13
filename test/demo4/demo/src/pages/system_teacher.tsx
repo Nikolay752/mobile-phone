@@ -5,7 +5,6 @@ import button from '../layouts/button_back.less';
 import Hello from "@/layouts/Hello";
 import TeacherCreditChart from "@/layouts/Charts/TeacherCreditChart";
 import TeacherScheduleChart from "@/layouts/Charts/TeacherScheduleChart";
-import ClassCountChart from "@/layouts/Charts/ClassCountChart";
 import Collage from "@/layouts/Charts/Collage";
 import ClassDistribution from "@/layouts/Charts/ClassDistribution";
 import { classScheduleMap, mockCreditMap, mockCollage, mockClassDistribution } from "@/mockData/teacherData";
@@ -17,7 +16,6 @@ export default function SystemPage() {
     const [userClass, setUserClass] = useState<string>(''); // 新增：存储教师授课班级
     const [scheduleData, setScheduleData] = useState<any[]>([]);
     const [creditData, setCreditData] = useState<any[]>([]);
-    const [classData, setClassData] = useState<any[]>([]);
     const [collageData, setCollageData] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true); // 新增：加载状态
     const [error, setError] = useState<string>(''); // 新增：错误状态
@@ -36,20 +34,15 @@ export default function SystemPage() {
         return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
     };
 
-    // 重构：按班级匹配课表（对齐学生系统逻辑）
+    // 按班级匹配课表（对齐学生系统逻辑）
     // system_teacher.tsx 中 fetchChartData 函数修改部分
     const fetchChartData = (userClass: string) => {
         try {
             setLoading(true);
             setError('');
-
-            // 1. 匹配班级课表（无匹配则用物联2301兜底）
-            const targetSchedule = classScheduleMap[userClass as keyof typeof classScheduleMap]
-                || [];
-
-            // 2. 匹配对应班级的成绩数据（新增：和课表逻辑一致）
-            const targetCredit = mockCreditMap[userClass as keyof typeof mockCreditMap]
-                || []; // 兜底物联2301
+            const targetSchedule = classScheduleMap[userClass as keyof typeof classScheduleMap] || [];
+            // 匹配对应班级的成绩数据（新增：和课表逻辑一致）
+            const targetCredit = mockCreditMap[userClass as keyof typeof mockCreditMap] || [];
 
             // 3. 校验所有数据格式（增强容错）
             if (!Array.isArray(targetSchedule)) throw new Error('课表数据格式错误');
@@ -103,8 +96,7 @@ export default function SystemPage() {
         // 初始化用户信息
         setUserRole(role);
         setUsername(name || '老师');
-        setUserClass(teacherClass || '物联2301'); // 存储班级，兜底为物联2301
-
+        setUserClass(teacherClass || '物联2301'); // 存储班级
         // 加载对应班级的图表数据
         fetchChartData(teacherClass || '物联2301');
 

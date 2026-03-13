@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_student.less';
-import button from '../layouts/button_back.less';
+import button from '@/layouts/button_back.less';
 import Hello from "@/layouts/Hello";
 import StudentCreditChart from "@/layouts/Charts/StudentCreditChart";
 import StudentScheduleChart from "@/layouts/Charts/StudentScheduleChart";
