@@ -9,7 +9,6 @@ import Collage from "@/layouts/Charts/Collage";
 import ClassDistribution from "@/layouts/Charts/ClassDistribution";
 import { classScheduleMap, mockCreditMap, mockCollage, mockClassDistribution } from "@/mockData/teacherData";
 import Refresh from "@/layouts/Refresh";
-import StudentScheduleChart from "@/layouts/Charts/TeacherScheduleChart";
 
 export default function SystemPage() {
     const [currentTime, setCurrentTime] = useState<string>('');
@@ -145,6 +144,9 @@ export default function SystemPage() {
                 <div onClick={handleRefreshCharts} style={{ cursor: 'pointer', margin: '0 10px' }}>
                     <Refresh />
                     {refreshing && <span style={{ fontSize: '12px', color: '#409eff' }}>刷新中...</span>}
+                </div>
+                <div className={button.button} onClick={() => navigate('/')}>
+                    logout
                 </div>
                 <div className={button.button} onClick={() => navigate('/system')}>
                     back

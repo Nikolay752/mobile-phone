@@ -115,8 +115,10 @@ export default function SystemPage() {
         {/* 刷新按钮：仅绑定图表刷新方法 */}
         <div onClick={handleRefreshCharts} style={{ cursor: 'pointer', margin: '0 10px' }}>
           <Refresh />
-          {refreshing && <span style={{ fontSize: '12px', color: '#409eff' }}>刷新中...</span>}
+          {refreshing }
         </div>
+        <div className={button.button} onClick={() => navigate('/')
+        }>logout</div>
         <div className={button.button} onClick={() => navigate('/system')}>back</div>
       </div>
 
