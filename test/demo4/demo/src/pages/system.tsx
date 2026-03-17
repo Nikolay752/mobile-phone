@@ -1,6 +1,6 @@
 // system.tsx 最终修改后代码
 import React, { useState, useEffect } from "react";
-import { useNavigate } from 'umi';
+import { useLocation,useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_system.less';
 import button from '../layouts/button_back.less';
 import spanstyle from '../layouts/span_title.less';
@@ -220,6 +220,8 @@ export default function SystemPage() {
     // 清除定时器
     return () => clearInterval(timer);
   }, [navigate]);
+
+  
 
   return (
     <div className={Mainstyle.main}>
