@@ -1,2 +1,10 @@
 [
+  {
+    "id": 1773711696916,
+    "username": "wulian2301",
+    "password": "$2b$10$On4.E/jwNfUZdamhjgvFPuAcVfLtwbb0yK9X5pAt9x2gkgjnhkO86",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-03-17T01:41:36.916Z"
+  }
 ]
