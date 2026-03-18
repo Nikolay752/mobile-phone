@@ -114,8 +114,6 @@ export default function Layout() {
   // 渲染页面
   return (
     <div className={Mainstyle.main}>
-      {/* 头部 */}
-      <div className={Mainstyle.header}></div>
 
       {/* 主体内容 */}
       {!isLoggedIn ? (
