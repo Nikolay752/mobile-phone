@@ -24,7 +24,7 @@
       null,
       null,
       null,
-      null,
+      "black",
       null,
       null,
       null,
@@ -41,7 +41,7 @@
       null,
       null,
       null,
-      null,
+      "white",
       null,
       null,
       null,
@@ -260,5 +260,5 @@
   "gameOver": false,
   "winner": null,
   "gameMode": "human",
-  "updateTime": "2026-03-18T10:26:11.949Z"
+  "updateTime": "2026-03-19T01:37:47.200Z"
 }
