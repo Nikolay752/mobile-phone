@@ -1,16 +1,17 @@
 /**
  * PageAgent 五子棋棋盘数据读取脚本
- * 功能：优先读全局变量 → 兜底调接口 → 定时轮询（带防抖）
+ * 功能：优先读全局变量 → 兜底调接口 → 1秒定时轮询（和棋盘更新频率一致）
  * 修复：重复请求限制、数据统一解析、详细日志
  */
 let isRequesting = false; // 防止重复请求
-const POLL_INTERVAL = 500; // 轮询间隔500ms
-
+const POLL_INTERVAL = 1000; // 核心修改：改为1秒轮询，和棋盘自动更新频率一致
 // 统一解析棋盘数据（全局变量/接口返回数据通用）
 const parseBoardData = (rawData) => {
-  if (!rawData || !rawData.currentBoard) return null;
+  if (!rawData || !rawData.currentBoard && !rawData.board) return null;
+  // 兼容全局变量的board字段和接口的currentBoard字段
+  const realBoard = rawData.currentBoard || rawData.board;
   // 统计棋子数量
-  const chessCount = rawData.currentBoard.reduce((cnt, row) => {
+  const chessCount = realBoard.reduce((cnt, row) => {
     row.forEach(cell => {
       if (cell === 'black') cnt.black++;
       else if (cell === 'white') cnt.white++;
@@ -24,7 +25,7 @@ const parseBoardData = (rawData) => {
     winner: rawData.winner ? (rawData.winner === 'black' ? '黑棋' : '白棋') : '无',
     gameMode: rawData.gameMode === 'ai' ? '人机对战' : '双人对战',
     chessCount,
-    currentBoard: rawData.currentBoard,
+    currentBoard: realBoard,
     updateTime: rawData.updateTime,
     source: rawData.source || '未知'
   };
@@ -36,7 +37,7 @@ const fetchBoardFromApi = async () => {
     const res = await fetch('http://localhost:3001/api/gobang/getRecord', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      cache: 'no-cache' // 禁用缓存，确保获取最新数据
+      cache: 'no-cache' // 禁用缓存，确保获取最新1秒同步的数据
     });
     if (!res.ok) throw new Error(`HTTP错误：${res.status} ${res.statusText}`);
     const data = await res.json();
@@ -60,21 +61,18 @@ const pageAgentReadGlobalBoard = async () => {
     if (typeof window === 'undefined') {
       throw new Error('非浏览器环境，无法执行');
     }
-
     let boardData = null;
     let parsedData = null;
-
-    // 第一步：读取全局变量
+    // 第一步：读取全局变量（棋盘1秒同步一次，全局变量始终最新）
     if (window.GOBANG_RECORD) {
       boardData = window.GOBANG_RECORD;
-      boardData.source = '全局变量';
-      console.log(`[PageAgent-${new Date().toLocaleTimeString()}] ⚡ 从全局变量读取数据`);
+      boardData.source = '全局变量（1秒同步）';
+      console.log(`[PageAgent-${new Date().toLocaleTimeString()}] ⚡ 从全局变量读取最新棋盘数据`);
     } 
     // 第二步：全局变量无效则调用接口
     else {
       boardData = await fetchBoardFromApi();
     }
-
     // 解析数据并输出
     if (boardData) {
       parsedData = parseBoardData(boardData);
@@ -86,7 +84,6 @@ const pageAgentReadGlobalBoard = async () => {
     } else {
       console.error(`[PageAgent-${new Date().toLocaleTimeString()}] ❌ 全局变量+接口均获取失败`);
     }
-
     return parsedData;
   } catch (err) {
     console.error(`[PageAgent-${new Date().toLocaleTimeString()}] ❌ 执行失败：`, err.message);
@@ -100,7 +97,7 @@ const pageAgentReadGlobalBoard = async () => {
 // 初始化执行
 pageAgentReadGlobalBoard();
 
-// 定时轮询（带防抖，避免频繁请求）
+// 定时轮询（和棋盘更新频率一致，1秒一次）
 setInterval(() => {
   if (!isRequesting) {
     pageAgentReadGlobalBoard();
@@ -109,4 +106,4 @@ setInterval(() => {
 
 // 暴露全局方法，方便手动调用
 window.pageAgentReadGlobalBoard = pageAgentReadGlobalBoard;
-console.log(`[PageAgent-${new Date().toLocaleTimeString()}] 🚀 棋盘数据读取脚本已加载，轮询间隔${POLL_INTERVAL}ms`);
+console.log(`[PageAgent-${new Date().toLocaleTimeString()}] 🚀 棋盘数据读取脚本已加载，1秒自动轮询最新数据`);
