@@ -141,7 +141,7 @@ export default function SystemPage() {
         <div className={Mainstyle.main}>
             <div className={Mainstyle.header}>
                 <Hello username={username || '老师'} />
-                <div onClick={handleRefreshCharts} style={{ cursor: 'pointer', margin: '0 10px' }}>
+                <div onClick={handleRefreshCharts} style={{ cursor: 'pointer', margin: '10px 10px' }}>
                     <Refresh />
                     {refreshing && <span style={{ fontSize: '12px', color: '#409eff' }}>刷新中...</span>}
                 </div>

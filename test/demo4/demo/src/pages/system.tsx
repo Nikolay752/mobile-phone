@@ -324,7 +324,7 @@ export default function SystemPage() {
           教师系统
         </button>
         <div>
-          <h5 className={spanstyle.span}>系统智能助手</h5>
+          <span className= {spanstyle.span_title}>系统智能助手</span>
           <button
             className={button_Stu.button}
             onClick={handleAgentChat}
