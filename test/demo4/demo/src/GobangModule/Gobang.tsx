@@ -140,7 +140,8 @@ const Gobang: React.FC = () => {
       }
       // 强制同步全局变量，保证读取脚本能获取最新数据
       (window as any).GOBANG_RECORD = {
-        board: serverData.currentBoard,
+        board: serverData.currentBoard, // 保留原有字段，不影响其他逻辑
+        currentBoard: serverData.currentBoard, // 新增：适配reader脚本的解析字段
         currentPlayer: serverData.currentPlayer,
         gameOver: serverData.gameOver,
         winner: serverData.winner,
@@ -164,7 +165,8 @@ const Gobang: React.FC = () => {
       setGameMode(record.gameMode);
       // 初始化全局变量
       (window as any).GOBANG_RECORD = {
-        board: record.currentBoard,
+        board: record.currentBoard, // 保留原有字段
+        currentBoard: record.currentBoard, // 新增：适配reader脚本
         currentPlayer: record.currentPlayer,
         gameOver: record.gameOver,
         winner: record.winner,
@@ -201,7 +203,8 @@ const Gobang: React.FC = () => {
       gobangApi.updateRecord(record);
       // 同步全局变量
       (window as any).GOBANG_RECORD = {
-        board: record.currentBoard,
+        board: record.currentBoard, // 保留原有字段
+        currentBoard: record.currentBoard, // 新增：适配reader脚本
         currentPlayer: record.currentPlayer,
         gameOver: record.gameOver,
         winner: record.winner,
@@ -243,7 +246,8 @@ const Gobang: React.FC = () => {
       setIsAiThinking(false);
       // 重置全局变量
       (window as any).GOBANG_RECORD = {
-        board: res.data.currentBoard,
+        board: res.data.currentBoard, // 保留原有字段
+        currentBoard: res.data.currentBoard, // 新增：适配reader脚本
         currentPlayer: res.data.currentPlayer,
         gameOver: res.data.gameOver,
         winner: res.data.winner,
