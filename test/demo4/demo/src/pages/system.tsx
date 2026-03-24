@@ -19,6 +19,9 @@ export default function SystemPage() {
   const [agentLoading, setAgentLoading] = useState<boolean>(false);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const panelCloseHandlerRef = useRef<(() => void) | null>(null);
+  const [voiceText, setVoiceText] = useState<string>('');
+  const [isListening, setIsListening] = useState<boolean>(false);
+
 
   // 初始化 PageAgent（直接使用硬编码的API Key）
   const agent = new PageAgent({
