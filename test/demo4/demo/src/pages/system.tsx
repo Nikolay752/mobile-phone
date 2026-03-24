@@ -1,5 +1,5 @@
 // system.tsx 最终修改后代码
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_system.less';
 import button from '../layouts/button_back.less';
@@ -7,6 +7,7 @@ import spanstyle from '../layouts/span_title.less';
 import button_Stu from '../layouts/button_Stu.less';
 import Hello from "@/layouts/Hello";
 import { PageAgent } from 'page-agent';
+import { clear } from "echarts/types/src/util/throttle.js";
 
 
 export default function SystemPage() {
@@ -16,7 +17,8 @@ export default function SystemPage() {
   const navigate = useNavigate();
   const [agentAnswer, setAgentAnswer] = useState<string>('');
   const [agentLoading, setAgentLoading] = useState<boolean>(false);
-  const [audioStream,setAudioStream] = useState<MediaStream | null>(null);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const panelCloseHandlerRef = useRef<(() => void) | null>(null);
 
   // 初始化 PageAgent（直接使用硬编码的API Key）
   const agent = new PageAgent({
@@ -239,21 +241,110 @@ export default function SystemPage() {
 
 
   // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
-  const handleAgentChat = async() => {
+  const handleAgentChat = async () => {
     setAgentLoading(true);
     // 自动打开PageAgent原生面板（核心逻辑）
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
-      console.log('麦克风访问成功',stream);
-    }catch (error) {
-      console.error('麦克风访问失败',error);
-      alert('请检查麦克风是否正常打开！');
-    }
-    agent.panel.show();
-    // 延迟重置loading，避免按钮一直处于加载状态
-    setTimeout(() => { setAgentLoading(false); }, 1000);
+      // 1. 用临时变量兼容不同浏览器的 mediaDevices 实现
+      const mediaDevices = navigator.mediaDevices ||
+        (navigator as any).webkitMediaDevices ||
+        (navigator as any).mozMediaDevices;
 
+      // 2. 检查是否存在 getUserMedia 方法
+      if (!mediaDevices?.getUserMedia) {
+        throw new Error('当前浏览器不支持麦克风访问，请更换Chrome/Safari浏览器访问');
+      }
+
+      // 3. 检查是否为 HTTPS/localhost 环境（移动端必须）
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        throw new Error('麦克风访问仅支持HTTPS环境，请切换至HTTPS页面后重试');
+      }
+
+      if (audioStream) {
+        audioStream?.getTracks().forEach(track => {
+          if (track.readyState !== 'ended') track.stop();
+        });
+        setAudioStream(null);
+      }
+      // 4. 调用麦克风获取音频流
+      const stream = await mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      setAudioStream(stream);
+      console.log('麦克风访问成功', stream);
+
+      // 5. 打开助手面板
+      agent.panel.show();
+
+      //先移除旧的监听
+      if (panelCloseHandlerRef.current) {
+        (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        panelCloseHandlerRef.current = null;
+      }
+      if ((window as any).panelCheckTimer) {
+        clearInterval((window as any).panelCheckTimer);
+        (window as any).panelCheckTimer = null;
+      }
+
+      //定义关闭处理函数并缓存到ref
+      const handlePanelClose = () => {
+        if (audioStream) {
+          audioStream.getTracks().forEach((track: MediaStreamTrack) => {
+            track.stop();
+            console.log(`麦克风轨道已停止：${track.kind}`);
+          });
+          setAudioStream(null);
+          console.log('麦克风已关闭');
+        }
+        //解绑事件（避免内存泄漏）
+        if ((window as any).panelCheckTimer) {
+          clearInterval((window as any).panelCheckTimer);
+          (window as any).panelCheckTimer = null;
+        }
+        (agent.panel as any).off('close', handlePanelClose);
+        panelCloseHandlerRef.current = null;
+      };
+      panelCloseHandlerRef.current = handlePanelClose;
+      (agent.panel as any).on('close', handlePanelClose);
+
+      //新增监听面板隐藏状态
+      const checkPanelMidden = () => {
+        if (!(agent.panel as any).isVisible() && audioStream) {
+          handlePanelClose(); //面板隐藏时强制停止麦克风
+        }
+      };
+
+      //每0.5秒检查一次面板状态
+      const panelCheckTimer = setInterval(() => {
+        // 检查面板是否隐藏 + 存在音频流
+        if (!(agent.panel as any).isVisible() && audioStream) {
+          handlePanelClose(); // 强制关闭麦克风
+        }
+      }, 500);
+      // 缓存定时器到window（方便卸载时清理）
+      (window as any).panelCheckTimer = panelCheckTimer;
+
+    } catch (error: any) {
+      let errorMsg = '麦克风访问失败';
+      if (error.name === 'PermissionDeniedError' || error.name === 'NotAllowedError') {
+        errorMsg += '：权限被拒绝，请在手机系统设置中开启浏览器的麦克风权限';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg += '：未检测到麦克风设备（请检查硬件是否正常/未被其他应用占用）';
+      } else if (error.message.includes('HTTPS')) {
+        errorMsg += '：' + error.message;
+      } else {
+        errorMsg += `：${error.message || '未知错误'}`;
+      }
+      console.error('麦克风错误详情', error);
+      alert(errorMsg);
+    } finally {
+      agent.panel.show();
+      setTimeout(() => setAgentLoading(false), 1000);
+    }
   };
 
   // 时间格式化
@@ -307,10 +398,26 @@ export default function SystemPage() {
     setUsername(name || '');
 
     // 清除定时器
-    return () => clearInterval(timer);
-  }, [navigate]);
-
-
+    return () => {
+      clearInterval(timer);
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        setAudioStream(null);
+      }
+      if (panelCloseHandlerRef.current) {
+        (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        panelCloseHandlerRef.current = null;
+      }
+      if((window as any).panelCheckTimer){
+        clearInterval((window as any).panelCheckTimer);
+        (window as any).panelCheckTimer = null;
+      }
+      if(agent.panel && (agent.panel as any).isVisible()) {
+        agent.panel.hide();
+      }
+      console.log('组件卸载：麦克风和面板资源已完全清理');
+    };
+  }, [navigate,audioStream]);
 
   return (
     <div className={Mainstyle.main}>

@@ -8,3 +8,12 @@
 代码有两个版本，一个手机版，一个电脑版，可以通过文件名判断。//Nikolay为电脑版，mobile为手机版。
 五子棋的数据可以在启动后端后，在本机上输入http://localhost:3001/api/gobang/getRecord查看，
 在手机可以输入http://192.168.5.30:3001/api/gobang/getRecord查看
+
+代码预览和下载：
+确保电脑和手机连接同一个网络
+电脑终端运行http-server -S -C localhost+1.pem -K localhost+1-key.pem -p 8080
+手机上浏览器地址输入https://192.168.5.30:8080/
+
+https页面：
+电脑终端运行：进入demo后，输入http-server dist -S -C localhost+1.pem -K localhost+1-key.pem -p 8080 --proxy http://192.168.5.30:3001
+手机端运行https://192.168.5.30:8080，登陆后可以正常访问麦克风。

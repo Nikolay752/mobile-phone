@@ -98,11 +98,11 @@ export default function SystemPage() {
 
     // 初始化用户信息（不参与刷新）
     setUserRole(role);
-    setUsername(name || '同学');
-    setUserClass(classInfo || '物联2301');
+    setUsername(name || '');
+    setUserClass(classInfo || '');
 
     // 首次加载图表数据
-    fetchChartData(classInfo || '物联2301').catch(err => console.error('初始化数据失败:', err));
+    fetchChartData(classInfo || '').catch(err => console.error('初始化数据失败:', err));
 
     return () => clearInterval(timer);
   }, [navigate]);
