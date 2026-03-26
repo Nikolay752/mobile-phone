@@ -1,21 +1,21 @@
 {
   "currentBoard": [
     [
+      "black",
+      "black",
+      "white",
+      "black",
+      "white",
+      "black",
+      "white",
+      "black",
       null,
       null,
       null,
       null,
       null,
       null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      "white"
     ],
     [
       null,
@@ -239,6 +239,7 @@
       null
     ],
     [
+      "black",
       null,
       null,
       null,
@@ -252,13 +253,12 @@
       null,
       null,
       null,
-      null,
-      null
+      "white"
     ]
   ],
-  "currentPlayer": "black",
+  "currentPlayer": "white",
   "gameOver": false,
   "winner": null,
   "gameMode": "human",
-  "updateTime": "2026-03-23T09:25:21.952Z"
+  "updateTime": "2026-03-25T10:13:02.448Z"
 }

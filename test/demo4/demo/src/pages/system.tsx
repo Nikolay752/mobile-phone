@@ -1,5 +1,5 @@
-// system.tsx 最终修改后代码
-import React, { useState, useEffect } from "react";
+// system.tsx 修正后代码
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_system.less';
 import button from '../layouts/button_back.less';
@@ -8,15 +8,19 @@ import button_Stu from '../layouts/button_Stu.less';
 import Hello from "@/layouts/Hello";
 import { PageAgent } from 'page-agent';
 
+// 移除无效导入（原clear未使用且路径异常）
 
 export default function SystemPage() {
-  const [currentTime, setCurrentTime] = useState<string>('');
-  const [userRole, setUserRole] = useState<string>('');
-  const [username, setUsername] = useState<string>('');
   const navigate = useNavigate();
   const [agentAnswer, setAgentAnswer] = useState<string>('');
   const [agentLoading, setAgentLoading] = useState<boolean>(false);
-  const [audioStream,setAudioStream] = useState<MediaStream | null>(null);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  // 新增缺失的状态声明
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+
+  const panelCloseHandlerRef = useRef<(() => void) | null>(null);
 
   // 初始化 PageAgent（直接使用硬编码的API Key）
   const agent = new PageAgent({
@@ -36,13 +40,12 @@ export default function SystemPage() {
 
 ## 二、全局强制操作+日志规则
 1. 【DOM快照日志】：每次操作前，必须打印当前页面的关键节点状态。
-   格式：[DOM-LOG] 目标元素：[选择器]，可见性：[可见/不可见]，文本内容：[截取前50字]
+  格式：[DOM-LOG] 目标元素：[选择器]，可见性：[可见/不可见]，文本内容：[截取前50字]
 2. 【流程状态日志】：每完成一步（如点击、验证），必须打印：
-   格式：[STEP-LOG] 步骤：[步骤名]，结果：[成功/失败]，耗时：[ms]
+  格式：[STEP-LOG] 步骤：[步骤名]，结果：[成功/失败]，耗时：[ms]
 3. 【异常兜底日志】：若页面未出现预期元素，必须立即抛出，格式：
-   格式：[ERROR-LOG] 缺失模块：[模块名]，原因：[未加载/无数据/接口异常/无权限]
+  格式：[ERROR-LOG] 缺失模块：[模块名]，原因：[未加载/无数据/接口异常/无权限]
 4. 【通用操作原则】：禁止点击页面标题（如「个人课表」「授课课表」）、禁止重复点击按钮（跳转/刷新失败后仅记录，不重复操作）、优先检查DOM元素存在性再执行操作。
-
 `,
 
       // 页面级动态指导
@@ -76,8 +79,7 @@ export default function SystemPage() {
 3、点击刷新按钮后请耐心等待，刷新过程中请勿重复点击。
 4、“个人课表”这四个字下有一张表格，是课程表，横坐标对应的是周几，纵坐标对应的是课在第几节，鼠标移入时也会有提示。
 5、页面不在加载中，课表显示正常。课表就在"个人课表"这四个字下面，当鼠标移入蓝点时会有提示。
-
-        `;
+       `;
         }
 
         // 教师端授课课表页面
@@ -102,7 +104,7 @@ export default function SystemPage() {
 1. 若单个模块无数据：仅判定为「该模块接口返回空」，不影响其他模块判定。
 2. 若所有模块均无数据：原因优先判定为「教师无授课数据，所有接口返回空」。
 3. 若点击刷新后部分模块重新渲染：原因判定为「接口响应速度不一致，页面渲染异步异常」。
-        `;
+       `;
         }
 
         // 系统首页
@@ -133,128 +135,81 @@ export default function SystemPage() {
 2、那是因为白棋在0.5秒就下好了，如果显示是黑棋玩家回合，你就下。
 3、不要下在之前下过的地方和白棋已经下过的地方下棋。
 4、下完一步棋之后，等待两秒钟，此时肯定是你的回合，此时可以下棋。
-        `;
-        }
-        if (url.includes('/game')) {
-          return `
-# 五子棋AI执黑棋页面级操作指导（严格执行）
-⚠️ 【绝对禁止操作】
-1. 全程禁止点击「重置游戏」「人机对战」「双人对战」「back」按钮，任何情况都不能点！
-2. 绝对禁止在已有棋子（黑棋或白棋）的位置落子！落子前必须检查目标位置为空！
-
----
-
-## 1. 页面基础信息
-- 棋盘规格：15×15 标准五子棋棋盘，共 225 个交叉点（索引 1~225，从上到下、从左到右编号）。
-- 执棋方：你执黑棋，持续下黑棋即可，无需等待白棋落子。
-- 棋子识别：
-  - 黑棋：圆形黑色棋子，类名包含 "black"。
-  - 白棋：圆形白色棋子，类名包含 "white"。
-  - 空位：无棋子，类名包含 "empty"/"gobang-grid-empty"，可落子。
-
----
-
-## 2. 落子禁忌（必须遵守）
-- 严禁点击已有棋子（黑/白）的位置，必须选择空白交叉点落子。
-- 游戏结束后（页面显示「黑棋获胜」/「白棋获胜」），停止所有落子操作。
-
----
-
-## 3. 最高优先级：白棋3连围堵（必须第一时间执行）
-### 触发条件
-只要发现白棋有连续3颗及以上连成一线（横向、纵向、斜向，包括左上-右下、右上-左下斜线），必须立刻停止所有进攻，优先围堵。
-
-### 围堵方法
-1. 找到这串白棋两端的延长线空位（即白棋直线向两侧延伸的第一个空白交叉点）。
-2. 选择其中一个空位下黑棋，阻断白棋延伸。
-3. 后续回合必须补堵另一端空位，彻底封死白棋形成4连/5连的可能。
-
-### 示例
-白棋在 A-B-C 连成横向3子，两端空位是 X（A左侧）和 Y（C右侧），必须先在 X 或 Y 落子，之后再补堵另一端。
-
-### 特殊情况
-如果一端已被棋子（黑/白）挡住，就堵另一端唯一的空位。
-
-### 执行要求
-- 白棋达到3连时就必须围堵，绝不能等到4连、5连！
-- 必须检查纵向和斜向的白棋，不能遗漏任何方向的连珠。
-
----
-
-## 4. 次优先级：进攻胜利（核心目标）
-### 进攻前提
-只有在完全没有白棋3连/4连需要围堵时，才考虑进攻。
-
-### 胜利判定规则（严格匹配页面显示）
-- **胜利判定仅看页面文字**：只有当「双人对战」按钮下方的一行文字显示为「黑棋获胜」时，才算你胜利。
-- 即使棋盘上形成连续5颗黑棋，只要页面未显示「黑棋获胜」，也不算胜利，需继续下棋。
-
-### AI落子评分逻辑（理解并执行）
-代码中 SCORE_WEIGHT 定义了落子优先级，你需按此权重选择最优位置：
-1. WIN: 100000 → 5子连珠 / 堵对方4连 → 最高优先级，立即落子
-2. FOUR: 10000 → 活四/冲四 → 次高优先级
-3. THREE: 1000 → 活三 / 堵对方3连 → 第三优先级
-4. TWO: 100 → 活二 → 第四优先级
-5. BLOCK: 10 → 堵对方2连 → 第五优先级
-6. DEFAULT: 1 → 普通落子 → 最低优先级
-当落子位置得分最高时，才落子。但是切记让白棋的分数尽量低。
-
-### 胜利报告
-只有当页面「双人对战」下方显示「黑棋获胜」时，才报告「AI胜利」并结束任务，禁止分析任何游戏系统问题。
-
----
-
-## 5. 结果处理
-- 你胜利：页面「双人对战」下方显示「黑棋获胜」 → 报告「AI胜利」。
-- 人机胜利：页面「双人对战」下方显示「白棋获胜」 → 报告「人机胜利」。
-- 其他情况：持续下黑棋，直到满足胜利条件。
-
----
-
-## 6. 操作约束
-- 每下一颗黑棋后，等待3秒再下下一步，无需关注页面回合提示，持续落子即可。
-- 落子后无需等待页面响应，直接继续判断棋盘状态并执行下一步操作。
-
----
-
-## 7. PageAgent 读取棋盘数据规则
-1. 读取接口：GET http://localhost:3001/api/gobang/getRecords
-2. 数据解析：
-   - currentBoard：当前棋盘完整状态（15×15数组）
-   - winner：获胜方（black/white/null）
-   - records：所有落子历史记录
-3. 执行要求：
-   - 每次操作前必须先调用该接口获取最新棋盘状态
-   - 解析棋盘数组，识别每个位置的棋子类型（黑/白/空）
-   - 记录当前棋盘的连珠情况、获胜状态
-          `
+       `;
         }
 
         // 其他页面：无特殊指导
         return `当前页面非课表管理系统核心页面，无需执行操作，仅打印[DOM-LOG]记录页面URL和核心元素状态即可。`;
       }
-
     }
   });
 
+  // 修复：合并重复声明的handleAgentChat函数，梳理麦克风逻辑
+const handleAgentChat = async () => {
+  setAgentLoading(true);
+  try {
+    // 步骤1：仅保留麦克风权限请求核心逻辑（剥离PageAgent面板依赖）
+    const mediaDevices = navigator.mediaDevices || 
+      (navigator as any).webkitMediaDevices || 
+      (navigator as any).mozMediaDevices;
 
-  // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
-  const handleAgentChat = async() => {
-    setAgentLoading(true);
-    // 自动打开PageAgent原生面板（核心逻辑）
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
-      console.log('麦克风访问成功',stream);
-    }catch (error) {
-      console.error('麦克风访问失败',error);
-      alert('请检查麦克风是否正常打开！');
+    if (!mediaDevices || !mediaDevices.getUserMedia) {
+      alert("当前浏览器不支持麦克风功能，请更换Chrome/Firefox浏览器");
+      setAgentLoading(false);
+      return;
     }
-    agent.panel.show();
-    // 延迟重置loading，避免按钮一直处于加载状态
-    setTimeout(() => { setAgentLoading(false); }, 1000);
 
-  };
+    // 步骤2：强制清理旧流（确保弹窗触发）
+    if (audioStream) {
+      audioStream.getTracks().forEach(track => track.stop());
+      setAudioStream(null);
+    }
+
+    // 步骤3：最简权限请求（仅音频，无额外配置）
+    console.log("请求麦克风权限...");
+    const stream = await mediaDevices.getUserMedia({ audio: true });
+    
+    // 授权成功回调
+    setAudioStream(stream);
+    alert("麦克风授权成功！");
+    console.log("麦克风流信息：", stream);
+
+    // 步骤4：再初始化PageAgent面板（非必须，先保证权限）
+    agent.panel.show();
+
+    // 保留原有的面板关闭清理逻辑
+    if (panelCloseHandlerRef.current) {
+      (agent.panel as any).off("close", panelCloseHandlerRef.current);
+    }
+    const handlePanelClose = () => {
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        setAudioStream(null);
+      }
+      (agent.panel as any).off("close", handlePanelClose);
+      panelCloseHandlerRef.current = null;
+      if ((window as any).panelCheckTimer) clearInterval((window as any).panelCheckTimer);
+    };
+    panelCloseHandlerRef.current = handlePanelClose;
+    (agent.panel as any).on("close", handlePanelClose);
+    (window as any).panelCheckTimer = setInterval(() => {
+      if (!(agent.panel as any).isVisible() && audioStream) handlePanelClose();
+    }, 500);
+
+  } catch (error: any) {
+    // 步骤5：精准捕获权限错误并引导用户
+    console.error("麦克风请求失败：", error);
+    if (error.name === "NotAllowedError") {
+      alert("麦克风权限被拒绝！请在浏览器地址栏左侧的「锁形图标」→「网站设置」中开启麦克风权限");
+    } else if (error.name === "NotFoundError") {
+      alert("未检测到麦克风设备，请检查硬件连接");
+    } else {
+      alert(`麦克风请求异常：${error.message}`);
+    }
+  } finally {
+    setAgentLoading(false);
+  }
+};
 
   // 时间格式化
   const formatTime = () => {
@@ -287,12 +242,14 @@ export default function SystemPage() {
     }
   };
 
+  // 修复：合并重复的useEffect，修正语法错误
   useEffect(() => {
+    // 初始化时间
     setCurrentTime(formatTime());
     const timer = setInterval(() => setCurrentTime(formatTime()), 1000);
-    const token = localStorage.getItem('token');
 
-    // 未登录时提前清除定时器+返回
+    // 登录状态校验
+    const token = localStorage.getItem('token');
     if (!token) {
       clearInterval(timer);
       alert('登录状态已失效，请重新登录！');
@@ -300,17 +257,48 @@ export default function SystemPage() {
       return;
     }
 
-    // 已登录，初始化信息
+    const checkMicSupport = () => {
+    const mediaDevices = navigator.mediaDevices || 
+      (navigator as any).webkitMediaDevices || 
+      (navigator as any).mozMediaDevices;
+    if (!mediaDevices || !mediaDevices.getUserMedia) {
+      alert("当前浏览器不支持麦克风，请使用Chrome浏览器访问");
+    }
+  };
+  checkMicSupport();
+
+
+    // 已登录，初始化用户信息
     const role = localStorage.getItem('role');
     const name = localStorage.getItem('username');
     setUserRole(role || '');
     setUsername(name || '');
 
-    // 清除定时器
-    return () => clearInterval(timer);
-  }, [navigate]);
-
-
+    // 组件卸载时的清理逻辑
+    return () => {
+      clearInterval(timer);
+      // 清理麦克风资源
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        setAudioStream(null);
+      }
+      // 清理面板监听
+      if (panelCloseHandlerRef.current) {
+        (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        panelCloseHandlerRef.current = null;
+      }
+      // 清理面板检查定时器
+      if ((window as any).panelCheckTimer) {
+        clearInterval((window as any).panelCheckTimer);
+        (window as any).panelCheckTimer = null;
+      }
+      // 隐藏面板
+      if (agent.panel && (agent.panel as any).isVisible()) {
+        agent.panel.hide();
+      }
+      console.log('组件卸载：麦克风和面板资源已完全清理');
+    };
+  }, [navigate, audioStream]); // 补充依赖项
 
   return (
     <div className={Mainstyle.main}>

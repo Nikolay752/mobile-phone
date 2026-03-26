@@ -1,24 +1,30 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
-const path = require('path');
+const path = require('path'); // 提前引入path模块
+const https = require('https');
+const http = require('http');
+const os = require('os'); // 提前引入os模块
 const app = express();
-const PORT = 3001;
 
-// 跨域配置：允许所有来源（适配本机+手机访问）
+const HTTPS_PORT = 8443;
+const HTTP_PORT = 8000;
+const BOARD_SIZE = 15;
+
+// 路径定义（提前定义，避免未定义报错）
+const GOBANG_RECORD_PATH = path.join(__dirname, 'gobang-record.json');
+const USERS_PATH = path.join(__dirname, 'users.json');
+
+// 跨域配置
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type'],
+  credentials: true // 允许携带凭证（如localStorage）
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// 数据文件路径
-const GOBANG_RECORD_PATH = path.join(__dirname, 'gobang-record.json');
-const USERS_PATH = path.join(__dirname, 'users.json');
-const BOARD_SIZE = 15;
-
-// 初始化默认棋盘数据
+// 初始化默认棋局记录
 const initDefaultRecord = () => ({
   currentBoard: Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
   currentPlayer: 'black',
@@ -28,18 +34,20 @@ const initDefaultRecord = () => ({
   updateTime: new Date().toISOString()
 });
 
-// 确保数据文件存在
+// 确保记录文件存在
 const ensureRecordFile = () => {
+  // 检查并创建棋局记录文件
   if (!fs.existsSync(GOBANG_RECORD_PATH)) {
     fs.writeFileSync(GOBANG_RECORD_PATH, JSON.stringify(initDefaultRecord(), null, 2), 'utf8');
   }
+  // 检查并创建用户记录文件
   if (!fs.existsSync(USERS_PATH)) {
     fs.writeFileSync(USERS_PATH, JSON.stringify([], null, 2), 'utf8');
   }
 };
 ensureRecordFile();
 
-// --- 登录接口（无 bcrypt，明文比对）---
+// --- 登录接口 ---
 app.post('/api/login', (req, res) => {
   try {
     const { username, password } = req.body;
@@ -60,7 +68,7 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// --- 注册接口（无 bcrypt，明文存储）---
+// --- 注册接口 ---
 app.post('/api/signup', (req, res) => {
   try {
     const { username, password, role, class: className } = req.body;
@@ -77,7 +85,7 @@ app.post('/api/signup', (req, res) => {
     const newUser = {
       id: Date.now(),
       username,
-      password, // 明文存储（仅测试用）
+      password,
       role,
       class: className,
       createTime: new Date().toISOString()
@@ -90,19 +98,18 @@ app.post('/api/signup', (req, res) => {
   }
 });
 
-// --- 核心新增：获取棋盘数据接口（适配本机+手机访问）---
+// --- 获取棋盘 ---
 app.get('/api/gobang/getRecord', (req, res) => {
   try {
     const record = JSON.parse(fs.readFileSync(GOBANG_RECORD_PATH, 'utf8'));
     res.json({ code: 200, msg: '获取成功', data: record });
   } catch (err) {
-    // 读取失败则返回默认空棋盘
     const defaultData = initDefaultRecord();
     res.json({ code: 500, msg: '获取失败，使用默认数据', error: err.message, data: defaultData });
   }
 });
 
-// --- 核心修改：删除重复的GET重置接口，保留POST重置接口 ---
+// --- 重置棋盘 ---
 app.post('/api/gobang/resetRecord', (req, res) => {
   try {
     const defaultData = initDefaultRecord();
@@ -113,13 +120,13 @@ app.post('/api/gobang/resetRecord', (req, res) => {
   }
 });
 
-// --- 更新棋盘数据接口 ---
+// --- 更新棋盘 ---
 app.post('/api/gobang/updateRecord', (req, res) => {
   try {
     const { currentBoard, currentPlayer, gameOver, winner, gameMode } = req.body;
     const newRecord = {
-      currentBoard,
-      currentPlayer,
+      currentBoard: currentBoard || Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
+      currentPlayer: currentPlayer || 'black',
       gameOver: gameOver ?? false,
       winner: winner ?? null,
       gameMode: gameMode ?? 'human',
@@ -132,7 +139,7 @@ app.post('/api/gobang/updateRecord', (req, res) => {
   }
 });
 
-// --- 给POST接口增加GET访问提示（避免页面空白）---
+// --- GET 请求提示（避免误调用）---
 app.get('/api/login', (req, res) => {
   res.json({ success: false, message: '该接口仅支持POST请求，请通过表单/接口工具调用' });
 });
@@ -146,12 +153,19 @@ app.get('/api/gobang/updateRecord', (req, res) => {
   res.json({ code: 405, msg: '该接口仅支持POST请求，请使用POST方式调用' });
 });
 
-// 启动服务（绑定0.0.0.0，允许本机+局域网访问）
-app.listen(PORT, '0.0.0.0', () => {
-  // 获取本机局域网IP
-  const os = require('os');
+// 静态文件服务（修复path.json语法错误）
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// SSL证书配置（请确保证书文件路径正确）
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, '192.168.26.48+1-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '192.168.26.48+1.pem'))
+};
+
+// 获取本地IP地址
+const getLocalIp = () => {
   const networkInterfaces = os.networkInterfaces();
-  let localIp = 'localhost';
+  let localIp = '192.168.26.48'; // 默认IP
   for (const key of Object.keys(networkInterfaces)) {
     for (const iface of networkInterfaces[key]) {
       if (iface.family === 'IPv4' && !iface.internal) {
@@ -160,11 +174,20 @@ app.listen(PORT, '0.0.0.0', () => {
       }
     }
   }
-  console.log(`✅ 服务运行在：`);
-  console.log(`   - 本机访问：http://localhost:${PORT}`);
-  console.log(`   - 局域网访问：http://${localIp}:${PORT}`);
-  console.log(`✅ 可用接口：`);
-  console.log(`   - 获取棋盘：GET http://${localIp}:${PORT}/api/gobang/getRecord`);
-  console.log(`   - 重置棋盘：POST http://${localIp}:${PORT}/api/gobang/resetRecord`);
-  console.log(`   - 更新棋盘：POST http://${localIp}:${PORT}/api/gobang/updateRecord`);
+  return localIp;
+};
+const localIp = getLocalIp();
+
+// 启动HTTP服务
+http.createServer(app).listen(HTTP_PORT, '0.0.0.0', () => {
+  console.log(`✅ HTTP 服务运行在：`);
+  console.log(`   - 本机访问：http://localhost:${HTTP_PORT}`);
+  console.log(`   - 局域网访问：http://${localIp}:${HTTP_PORT}`);
+});
+
+// 启动HTTPS服务
+https.createServer(sslOptions, app).listen(HTTPS_PORT, '0.0.0.0', () => {
+  console.log('✅ HTTPS 服务运行在：');
+  console.log(`   - 本机访问：https://localhost:${HTTPS_PORT}`);
+  console.log(`   - 局域网访问：https://${localIp}:${HTTPS_PORT}`);
 });
