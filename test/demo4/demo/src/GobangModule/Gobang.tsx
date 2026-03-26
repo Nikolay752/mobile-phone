@@ -33,7 +33,7 @@ import button from './button.less';
 const BOARD_SIZE = 15;
 type ChessType = 'black' | 'white' | null;
 // 核心修改：适配本机+局域网访问（优先局域网，本机备用）
-const API_BASE = 'http://192.168.5.30:3001/api/gobang';
+const API_BASE = '/api/gobang';
 
 // 棋盘数据结构
 interface GobangRecord {
@@ -155,18 +155,16 @@ const Gobang: React.FC = () => {
 
   // 状态变化同步后端
   useEffect(() => {
-    if (board?.length === BOARD_SIZE) {
-      gobangApi.updateRecord({
-        currentBoard: board,
-        currentPlayer,
-        gameOver,
-        winner,
-        gameMode
-      });
-      // 同步更新全局变量
-      (window as any).GOBANG_RECORD = getFullBoardData();
-    }
+    gobangApi.updateRecord({
+      currentBoard: board,
+      currentPlayer,
+      gameOver,
+      winner,
+      gameMode
+    });
+    (window as any).GOBANG_RECORD = getFullBoardData();
   }, [board, currentPlayer, gameOver, winner, gameMode]);
+
 
   // AI落子逻辑：监听游戏模式和当前玩家变化
   useEffect(() => {
@@ -225,11 +223,11 @@ const Gobang: React.FC = () => {
   const checkFourInLine = (board: ChessType[][], row: number, col: number, player: ChessType): boolean => {
     if (!player) return false;
     const directions = [[[0, 1], [0, -1]], [[1, 0], [-1, 0]], [[1, 1], [-1, -1]], [[1, -1], [-1, 1]]];
-    
+
     for (const [d1, d2] of directions) {
       let count = 1;
       let blockCount = 0; // 记录两端被阻挡的数量
-      
+
       // 正向检查
       let r = row + d1[0], c = col + d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
@@ -244,7 +242,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       // 反向检查
       r = row - d1[0], c = col - d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
@@ -259,7 +257,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       // 活四（4子且两端都没被挡）或冲四（4子且一端被挡）
       if (count === 4 && blockCount < 2) {
         return true;
@@ -272,11 +270,11 @@ const Gobang: React.FC = () => {
   const checkThreeInLine = (board: ChessType[][], row: number, col: number, player: ChessType): boolean => {
     if (!player) return false;
     const directions = [[[0, 1], [0, -1]], [[1, 0], [-1, 0]], [[1, 1], [-1, -1]], [[1, -1], [-1, 1]]];
-    
+
     for (const [d1, d2] of directions) {
       let count = 1;
       let blockCount = 0;
-      
+
       let r = row + d1[0], c = col + d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
         if (board[r][c] === player) {
@@ -290,7 +288,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       r = row - d1[0], c = col - d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
         if (board[r][c] === player) {
@@ -304,7 +302,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       // 活三（3子且两端都没被挡）
       if (count === 3 && blockCount === 0) {
         return true;
@@ -317,11 +315,11 @@ const Gobang: React.FC = () => {
   const checkTwoInLine = (board: ChessType[][], row: number, col: number, player: ChessType): boolean => {
     if (!player) return false;
     const directions = [[[0, 1], [0, -1]], [[1, 0], [-1, 0]], [[1, 1], [-1, -1]], [[1, -1], [-1, 1]]];
-    
+
     for (const [d1, d2] of directions) {
       let count = 1;
       let blockCount = 0;
-      
+
       let r = row + d1[0], c = col + d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
         if (board[r][c] === player) {
@@ -335,7 +333,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       r = row - d1[0], c = col - d1[1];
       while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
         if (board[r][c] === player) {
@@ -349,7 +347,7 @@ const Gobang: React.FC = () => {
           break;
         }
       }
-      
+
       // 活二（2子且两端都没被挡）
       if (count === 2 && blockCount === 0) {
         return true;
@@ -639,7 +637,7 @@ const Gobang: React.FC = () => {
       // 活棋得分更高（未被阻挡）
       const whiteLiveScore = whiteBlocked === 0 ? 2 : 1;
       const blackLiveScore = blackBlocked === 0 ? 2 : 1;
-      
+
       score += whiteCount * 15 * whiteLiveScore;  // AI自己棋子权重翻倍
       score += blackCount * 12 * blackLiveScore;  // 玩家棋子权重提升
     }

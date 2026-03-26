@@ -1,21 +1,21 @@
 {
   "currentBoard": [
     [
+      "black",
+      "black",
+      "white",
+      "black",
+      "white",
+      "black",
+      "white",
+      "black",
       null,
       null,
       null,
       null,
       null,
       null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      "white"
     ],
     [
       null,
@@ -239,6 +239,7 @@
       null
     ],
     [
+      "black",
       null,
       null,
       null,
@@ -252,13 +253,17 @@
       null,
       null,
       null,
-      null,
-      null
+      "white"
     ]
   ],
-  "currentPlayer": "black",
+  "currentPlayer": "white",
   "gameOver": false,
   "winner": null,
+<<<<<<< HEAD
   "gameMode": "ai",
   "updateTime": "2026-03-24T07:29:14.950Z"
+=======
+  "gameMode": "human",
+  "updateTime": "2026-03-25T10:13:02.448Z"
+>>>>>>> fix-mic
 }
