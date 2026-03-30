@@ -105,7 +105,7 @@ export default function SignupPage() {
     return (
         <div className={Mainstyle.main}>
             <div className={Mainstyle.header}>
-                <span className={spanstyle.span_title}>User Sign Up</span>
+                <span>User Sign Up</span>
                 <div className={button.button} onClick={handleBackClick}>
                     Back
                 </div>

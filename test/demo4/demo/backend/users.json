@@ -38,5 +38,21 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-03-30T06:33:06.105Z"
+  },
+  {
+    "id": 1774855222993,
+    "username": "wulian104",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-03-30T07:20:22.993Z"
+  },
+  {
+    "id": 1774857199568,
+    "username": "wulian701",
+    "password": "123456",
+    "role": "teacher",
+    "class": "物联2301",
+    "createTime": "2026-03-30T07:53:19.568Z"
   }
 ]
