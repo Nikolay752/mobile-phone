@@ -5,27 +5,27 @@ import button from "../layouts/button_back.less"
 import { useNavigate } from 'umi';
 
 export default function GamePage() {
-      const navigate = useNavigate();
+  const navigate = useNavigate();
   const handleBackClick = () => {
     navigate('/');
   };
   return (
-    <div className={Styles.main}> 
-        <div className={Styles.header}>
-            <h1>Let's play a game.</h1>
-            <div className={button.button}
-            onClick={handleBackClick}
-            >
-              back
-            </div>
+    <div className={Styles.main}>
+      <div className={Styles.header}>
+        <h1>Let's play a game.</h1>
+        <div className={button.button}
+          onClick={handleBackClick}
+        >
+          back
+        </div>
 
-        </div>
-        <div className={Styles.body}>
-            <Gobang />
-        </div>
-        <div className={Styles.footer}>
+      </div>
+      <div className={Styles.body}>
+        <Gobang />
+      </div>
+      <div className={Styles.footer}>
 
-        </div>
+      </div>
     </div>
   );
 }

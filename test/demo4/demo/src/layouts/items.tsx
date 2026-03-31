@@ -39,6 +39,11 @@ const functionList: ListItem[] = [
     name: 'personal',
     internalLink: '/system',
   },
+  {
+    id: 7,
+    name: 'map',
+    internalLink:'/map'
+  },
 ];
 
 export default function Items() {
