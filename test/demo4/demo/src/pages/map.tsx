@@ -64,6 +64,7 @@ const AmapComponent = () => {
       const map = new AMap.Map(mapContainerRef.current, {
         zoom: 16,
         center: defaultCenterLngLat,
+        mapStyle:'amap://styles/ee412d9ac22fbd3d98c6ddfd83d0e765'
       });
       mapRef.current = map;
 
@@ -83,7 +84,7 @@ const AmapComponent = () => {
       defaultMarker.on('click', (e: any) => {
         defaultInfoWindow.open(map, e.target.getPosition());
       });
-      map.on('click',(e:any) => {
+      map.on('click', (e: any) => {
         const lng = e.lnglat.lng;
         const lat = e.lnglat.lat;
         alert(`选中地点坐标：\n经度：${lng.toFixed(6)}\n纬度：${lat.toFixed(6)}`)
@@ -95,13 +96,14 @@ const AmapComponent = () => {
         enableHighAccuracy: true, // 是否使用高精度定位，默认:true
         timeout: 10000, // 超过10秒后停止定位，默认：5s
         maximumAge: 0, // 定位结果缓存0毫秒，默认：0
-        convert: true, // 自动偏移坐标，偏移后的坐标为高德坐标，默认：true
+        convert: false, // 自动偏移坐标，偏移后的坐标为高德坐标，默认：true
+        useNative: true,
         showButton: true, // 显示定位按钮，默认：true
         buttonPosition: 'RB', // 定位按钮停靠位置，默认：'LB'，左下角
         buttonOffset: new AMap.Pixel(10, 20), // 定位按钮与设置的停靠位置的偏移量，默认：Pixel(10,20)
         showMarker: true, // 定位成功后在定位到的位置显示点标记，默认：true
         showCircle: true, // 定位成功后用圆圈表示定位精度范围，默认：true
-        panToLocation: true, // 定位成功后将地图视野移动到定位点，默认：true
+        panToLocation: false, // 定位成功后将地图视野移动到定位点，默认：true
         zoomToAccuracy: true, // 定位成功后调整地图视野范围使定位精度范围显示在视野中，默认：false
       });
 

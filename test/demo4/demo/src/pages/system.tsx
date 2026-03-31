@@ -243,9 +243,6 @@ export default function SystemPage() {
     }
   });
 
-
-  // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
-  // 点击按钮切换助手状态（开启/停止）
   // 点击按钮切换助手状态（开启/停止）
   const handleAgentChat = async () => {
     // 先判断是否已有音频流/面板开启，若有则直接停止
