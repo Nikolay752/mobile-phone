@@ -21,6 +21,7 @@ export default function SystemPage() {
   const panelCloseHandlerRef = useRef<(() => void) | null>(null);
   const [voiceText, setVoiceText] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
+  const recognitionRef = useRef<any>(null);
 
 
   // 初始化 PageAgent（直接使用硬编码的API Key）
@@ -244,143 +245,147 @@ export default function SystemPage() {
 
 
   // 点击按钮直接开启助手（移除API Key校验，保留loading状态）
-// 点击按钮切换助手状态（开启/停止）
-// 点击按钮切换助手状态（开启/停止）
-const handleAgentChat = async () => {
-  // 先判断是否已有音频流/面板开启，若有则直接停止
-  if (audioStream || (agent.panel && typeof (agent.panel as any).isVisible === 'function' && (agent.panel as any).isVisible())) {
-    // 停止麦克风
-    if (audioStream) {
-      audioStream.getTracks().forEach((track: MediaStreamTrack) => {
-        track.stop();
-        console.log(`麦克风轨道已停止：${track.kind}`);
-      });
-      setAudioStream(null);
-      console.log('麦克风已关闭');
-    }
-    // 关闭agent面板
-    if (agent.panel) {
-      agent.panel.hide();
-      console.log('Agent面板已关闭');
-    }
-    // 清理定时器和事件监听
-    if (panelCloseHandlerRef.current) {
-      if (agent.panel && typeof (agent.panel as any).off === 'function') {
-        (agent.panel as any).off('close', panelCloseHandlerRef.current);
-      }
-      panelCloseHandlerRef.current = null;
-    }
-    if ((window as any).panelCheckTimer) {
-      clearInterval((window as any).panelCheckTimer);
-      (window as any).panelCheckTimer = null;
-    }
-    setAgentLoading(false);
-    return;
-  }
-
-  // 原有开启逻辑
-  setAgentLoading(true);
-  try {
-    const mediaDevices = navigator.mediaDevices ||
-      (navigator as any).webkitMediaDevices ||
-      (navigator as any).mozMediaDevices;
-
-    if (!mediaDevices?.getUserMedia) {
-      throw new Error('当前浏览器不支持麦克风访问，请更换Chrome/Safari浏览器访问');
-    }
-
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-      throw new Error('麦克风访问仅支持HTTPS环境，请切换至HTTPS页面后重试');
-    }
-
-    const stream = await mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
-    setAudioStream(stream);
-    console.log('麦克风访问成功', stream);
-
-    agent.panel.show();
-
-    if (panelCloseHandlerRef.current) {
-      (agent.panel as any).off('close', panelCloseHandlerRef.current);
-      panelCloseHandlerRef.current = null;
-    }
-    if ((window as any).panelCheckTimer) {
-      clearInterval((window as any).panelCheckTimer);
-      (window as any).panelCheckTimer = null;
-    }
-
-    const handlePanelClose = () => {
+  // 点击按钮切换助手状态（开启/停止）
+  // 点击按钮切换助手状态（开启/停止）
+  const handleAgentChat = async () => {
+    // 先判断是否已有音频流/面板开启，若有则直接停止
+    if (audioStream || (agent.panel && typeof (agent.panel as any).isVisible === 'function' && (agent.panel as any).isVisible())) {
+      // 停止麦克风
       if (audioStream) {
-        (audioStream as MediaStream).getTracks().forEach((track: MediaStreamTrack) => {
+        audioStream.getTracks().forEach((track: MediaStreamTrack) => {
           track.stop();
           console.log(`麦克风轨道已停止：${track.kind}`);
         });
         setAudioStream(null);
         console.log('麦克风已关闭');
       }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+      // 关闭agent面板
+      if (agent.panel) {
+        agent.panel.hide();
+        console.log('Agent面板已关闭');
+      }
+      // 清理定时器和事件监听
+      if (panelCloseHandlerRef.current) {
+        if (agent.panel && typeof (agent.panel as any).off === 'function') {
+          (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        }
+        panelCloseHandlerRef.current = null;
+      }
       if ((window as any).panelCheckTimer) {
         clearInterval((window as any).panelCheckTimer);
         (window as any).panelCheckTimer = null;
       }
-      if (agent.panel && typeof (agent.panel as any).off === 'function') {
+      setAgentLoading(false);
+      return;
+    }
+
+    // 原有开启逻辑
+    setAgentLoading(true);
+    try {
+      const mediaDevices = navigator.mediaDevices ||
+        (navigator as any).webkitMediaDevices ||
+        (navigator as any).mozMediaDevices;
+
+      if (!mediaDevices?.getUserMedia) {
+        throw new Error('当前浏览器不支持麦克风访问，请更换Chrome/Safari浏览器访问');
+      }
+
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        throw new Error('麦克风访问仅支持HTTPS环境，请切换至HTTPS页面后重试');
+      }
+
+      const stream = await mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      setAudioStream(stream);
+      console.log('麦克风访问成功', stream);
+
+      agent.panel.show();
+
+      if (panelCloseHandlerRef.current) {
         (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        panelCloseHandlerRef.current = null;
       }
-    };
-    panelCloseHandlerRef.current = handlePanelClose;
-    if (agent.panel && typeof (agent.panel as any).on === 'function') {
-      (agent.panel as any).on('close', handlePanelClose);
-    }
-
-    const panelCheckTimer = setInterval(() => {
-      if (agent.panel && typeof (agent.panel as any).isVisible === 'function' && !(agent.panel as any).isVisible() && audioStream) {
-        handlePanelClose();
-      }
-    }, 500);
-
-    (window as any).panelCheckTimer = panelCheckTimer;
-
-  } catch (error: any) {
-    let errorMsg = '麦克风访问失败';
-    if (error.name === 'PermissionDeniedError' || error.name === 'NotAllowedError') {
-      errorMsg += '：权限被拒绝，请在手机系统设置中开启浏览器的麦克风权限';
-    } else if (error.name === 'NotFoundError') {
-      errorMsg += '：未检测到麦克风设备（请检查硬件是否正常/未被其他应用占用）';
-    } else if (error.message.includes('HTTPS')) {
-      errorMsg += '：' + error.message;
-    } else {
-      errorMsg += `：${error.message || '未知错误'}`;
-    }
-    console.error('麦克风错误详情', error);
-    alert(errorMsg);
-    // 麦克风失败时强制展示面板，且不绑定麦克风相关的关闭逻辑
-    agent.panel.show();
-    // 清理无效的音频流状态（避免干扰面板展示）
-    setAudioStream(null);
-    // 绑定面板关闭事件（仅清理面板，不处理麦克风）
-    const handlePanelCloseError = () => {
       if ((window as any).panelCheckTimer) {
         clearInterval((window as any).panelCheckTimer);
         (window as any).panelCheckTimer = null;
       }
-      if (agent.panel && typeof (agent.panel as any).off === 'function') {
-        (agent.panel as any).off('close', handlePanelCloseError);
+
+      const handlePanelClose = () => {
+        if (audioStream) {
+          (audioStream as MediaStream).getTracks().forEach((track: MediaStreamTrack) => {
+            track.stop();
+            console.log(`麦克风轨道已停止：${track.kind}`);
+          });
+          setAudioStream(null);
+          console.log('麦克风已关闭');
+        }
+        if ((window as any).panelCheckTimer) {
+          clearInterval((window as any).panelCheckTimer);
+          (window as any).panelCheckTimer = null;
+        }
+        if (agent.panel && typeof (agent.panel as any).off === 'function') {
+          (agent.panel as any).off('close', panelCloseHandlerRef.current);
+        }
+      };
+      panelCloseHandlerRef.current = handlePanelClose;
+      if (agent.panel && typeof (agent.panel as any).on === 'function') {
+        (agent.panel as any).on('close', handlePanelClose);
       }
-    };
-    panelCloseHandlerRef.current = handlePanelCloseError;
-    if (agent.panel && typeof (agent.panel as any).on === 'function') {
-      (agent.panel as any).on('close', handlePanelCloseError);
+
+      const panelCheckTimer = setInterval(() => {
+        if (agent.panel && typeof (agent.panel as any).isVisible === 'function' && !(agent.panel as any).isVisible() && audioStream) {
+          handlePanelClose();
+        }
+      }, 500);
+
+      (window as any).panelCheckTimer = panelCheckTimer;
+
+    } catch (error: any) {
+      let errorMsg = '麦克风访问失败';
+      if (error.name === 'PermissionDeniedError' || error.name === 'NotAllowedError') {
+        errorMsg += '：权限被拒绝，请在手机系统设置中开启浏览器的麦克风权限';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg += '：未检测到麦克风设备（请检查硬件是否正常/未被其他应用占用）';
+      } else if (error.message.includes('HTTPS')) {
+        errorMsg += '：' + error.message;
+      } else {
+        errorMsg += `：${error.message || '未知错误'}`;
+      }
+      console.error('麦克风错误详情', error);
+      alert(errorMsg);
+      // 麦克风失败时强制展示面板，且不绑定麦克风相关的关闭逻辑
+      agent.panel.show();
+      // 清理无效的音频流状态（避免干扰面板展示）
+      setAudioStream(null);
+      // 绑定面板关闭事件（仅清理面板，不处理麦克风）
+      const handlePanelCloseError = () => {
+        if ((window as any).panelCheckTimer) {
+          clearInterval((window as any).panelCheckTimer);
+          (window as any).panelCheckTimer = null;
+        }
+        if (agent.panel && typeof (agent.panel as any).off === 'function') {
+          (agent.panel as any).off('close', handlePanelCloseError);
+        }
+      };
+      panelCloseHandlerRef.current = handlePanelCloseError;
+      if (agent.panel && typeof (agent.panel as any).on === 'function') {
+        (agent.panel as any).on('close', handlePanelCloseError);
+      }
+    } finally {
+      setTimeout(() => setAgentLoading(false), 1000);
+      // 移除finally中的agent.panel.hide()，避免覆盖catch中的show()
+      // 仅在成功获取麦克风时保留面板，失败时由catch控制面板展示
     }
-  } finally {
-    setTimeout(() => setAgentLoading(false), 1000);
-    // 移除finally中的agent.panel.hide()，避免覆盖catch中的show()
-    // 仅在成功获取麦克风时保留面板，失败时由catch控制面板展示
-  }
-};
+  };
 
   // 时间格式化
   const formatTime = () => {
@@ -453,8 +458,37 @@ const handleAgentChat = async () => {
         agent.panel.hide();
       }
       console.log('组件卸载：麦克风和面板资源已完全清理');
+      if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, [navigate, audioStream]);
+
+  useEffect(() => {
+    const initChromeSTT = () => {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      if (!SpeechRecognition) return;
+
+      const recog = new SpeechRecognition();
+      recog.lang = 'zh-CN';
+      recog.continuous = true;
+      recog.interimResults = true;
+
+      recog.onresult = (e: any) => {
+        let txt = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          txt += e.results[i][0].transcript;
+        }
+        setVoiceText(txt);
+      };
+
+      recog.onend = () => {
+        if (isListening) recog.start();
+      };
+
+      recognitionRef.current = recog;
+    };
+
+    initChromeSTT();
+  }, [isListening]);
 
   return (
     <div className={Mainstyle.main}>
@@ -484,8 +518,17 @@ const handleAgentChat = async () => {
             onClick={handleAgentChat}
             disabled={agentLoading}
           >
-             {agentLoading ? '处理中...' : (audioStream || (agent.panel && typeof (agent.panel as any).isVisible === 'function' && (agent.panel as any).isVisible()) ? '停止助手' : '提问')}
+            {agentLoading ? '处理中...' : (audioStream || (agent.panel && typeof (agent.panel as any).isVisible === 'function' && (agent.panel as any).isVisible()) ? '停止助手' : '提问')}
           </button>
+          {isListening && (
+            <div style={{ color: '#1677ff', margin: '8px 0', fontSize: 14 }}>🎤 正在倾听（Chrome本地语音转文字）</div>
+          )}
+          {voiceText && (
+            <div style={{ padding: '10px', background: '#f5f7fa', borderRadius: 6, marginTop: 8 }}>
+              <div style={{ fontWeight: 500 }}>语音转文字：</div>
+              <div style={{ marginTop: 4 }}>{voiceText}</div>
+            </div>
+          )}
           {/* 大模型回答展示 */}
           {agentAnswer && (
             <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f5f7fa', borderRadius: '4px', fontSize: '14px' }}>
