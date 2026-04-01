@@ -145,6 +145,7 @@ app.post('/api/login', (req, res) => {
 
     //更新登陆时间
     user.loginTime = getBeijingTimeISO();
+    user.logoutTime = null;
     fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
 
     res.json({
@@ -155,7 +156,8 @@ app.post('/api/login', (req, res) => {
         role: user.role,
         class: user.class,
         loginTime: user.loginTime, // 登录时间
-        isLoading: user.isLoading // 返回登录状态
+        isLoading: user.isLoading, // 返回登录状态
+        logoutTime: user.logoutTime
       }
     });
   } catch (err) {

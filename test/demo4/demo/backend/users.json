@@ -6,9 +6,9 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-01T15:35:16.692Z",
-    "isLoading": true,
-    "loginTime": "2026-04-01T15:36:35.036Z",
-    "logoutTime": "2026-04-01T15:36:29.885Z"
+    "isLoading": false,
+    "loginTime": "2026-04-01T16:03:49.056Z",
+    "logoutTime": "2026-04-01T16:04:01.572Z"
   },
   {
     "id": 1775029046019,
@@ -17,8 +17,8 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-01T15:37:26.019Z",
-    "isLoading": false,
-    "loginTime": "2026-04-01T15:38:44.767Z",
-    "logoutTime": "2026-04-01T15:39:24.742Z"
+    "isLoading": true,
+    "loginTime": "2026-04-01T16:04:23.773Z",
+    "logoutTime": null
   }
 ]

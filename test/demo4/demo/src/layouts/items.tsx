@@ -31,16 +31,21 @@ const functionList: ListItem[] = [
   },
   {
     id: 5,
+    name: 'Github',
+    externalLink: 'https://github.com',
+  },
+  {
+    id: 6,
     name: 'game',
     internalLink: '/game',
   },
   {
-    id: 6,
+    id: 7,
     name: 'personal',
     internalLink: '/system',
   },
   {
-    id: 7,
+    id: 8,
     name: 'map',
     internalLink:'/map'
   },
