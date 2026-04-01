@@ -34,3 +34,13 @@ export async function signup(params: { username: string; password: string; role:
     data: params,
   });
 }
+/**
+ * 退出登录接口（写入 isLogin: false 到 users.json）
+ * @param params { username }
+ */
+export async function logout(params: { username: string }) {
+  return request(`${API_BASE_URL}/logout`, {
+    method: 'POST',
+    data: params,
+  });
+}

@@ -259,6 +259,6 @@
   "currentPlayer": "black",
   "gameOver": false,
   "winner": null,
-  "gameMode": "ai",
-  "updateTime": "2026-03-31T07:59:08.612Z"
+  "gameMode": "human",
+  "updateTime": "2026-04-01T06:44:02.245Z"
 }

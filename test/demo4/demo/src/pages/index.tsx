@@ -4,7 +4,7 @@ import btnstyles from '../layouts/button_login.less';
 import { useState, useEffect } from 'react';
 import { KeyboardEvent } from 'react';
 import Items from '../layouts/items';
-import { login, LoginResponse } from '@/services/api';
+import { login, LoginResponse,logout } from '@/services/api';
 
 export default function Layout() {
   // 状态管理
@@ -34,7 +34,7 @@ export default function Layout() {
     const savedToken = localStorage.getItem('token');
     const savedIsLoggedIn = localStorage.getItem('isLoggedIn');
     const savedUsername = localStorage.getItem('username');
-    
+
     // 双重校验：token存在 或 isLoggedIn标识为true，都判定为已登录
     const loginState = !!(savedToken || savedIsLoggedIn === 'true');
     setIsLoggedIn(loginState);
@@ -104,11 +104,16 @@ export default function Layout() {
   };
 
   // 优化：登出时清空所有登录标识
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUsername('');
-    setPassword('');
-    localStorage.clear(); // 清空所有localStorage
+  const handleLogout = async () => {
+    try {
+      await logout({ username });
+      setIsLoggedIn(false);
+      setUsername('');
+      setPassword('');
+      localStorage.clear(); // 清空所有localStorage
+    }catch (error) {
+      console.error('登出失败：', error);
+    }
   };
 
   // 渲染页面

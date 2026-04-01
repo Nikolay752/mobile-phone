@@ -1,11 +1,18 @@
+function getBeijingTimeISO() {
+  const now = new Date();
+  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  return beijingTime.toISOString();
+}
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path'); // 提前引入path模块
-const https = require('https');
 const http = require('http');
+const https = require('https');
 const os = require('os'); // 提前引入os模块
 const app = express();
+const { setTimeout } = require('timers/promises');
 
 const HTTPS_PORT = 8443;
 const HTTP_PORT = 8000;
@@ -34,6 +41,68 @@ const initDefaultRecord = () => ({
   updateTime: new Date().toISOString()
 });
 
+//定时重置所有用户的登陆状态
+// 定时重置所有用户的登陆状态（修复版）
+const autoResetLoadingStatus = async () => {
+  // 增加防卡死：最多等待5秒获取文件锁，超时则跳过本次执行
+  const FILE_LOCK_TIMEOUT = 5000;
+
+  while (true) {
+    try {
+
+      // 1. 读取用户文件（增加超时保护）
+      let users;
+      const readStart = Date.now();
+      while (!users && Date.now() - readStart < FILE_LOCK_TIMEOUT) {
+        try {
+          users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+        } catch (e) {
+          if (e.code === 'EBUSY' || e.code === 'EACCES') {
+            // 文件被占用，短暂等待后重试
+            await setTimeout(100);
+          } else {
+            throw e;
+          }
+        }
+      }
+
+      // 2. 检查是否有需要重置的用户
+      const usersToReset = users.filter(user => user.isLoading === false);
+      if (usersToReset.length === 0) {
+        await setTimeout(10 * 1000);
+        continue;
+      }
+
+      //  写入文件
+      let writeSuccess = false;
+      const writeStart = Date.now();
+      while (!writeSuccess && Date.now() - writeStart < FILE_LOCK_TIMEOUT) {
+        try {
+          fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+          writeSuccess = true;
+        } catch (e) {
+          if (e.code === 'EBUSY' || e.code === 'EACCES') {
+            await setTimeout(100);
+          } else {
+            throw e;
+          }
+        }
+      }
+
+    } catch (err) {
+    }
+
+    // 5. 固定10秒间隔，避免执行耗时影响周期
+    await setTimeout(10 * 1000);
+  }
+};
+
+// 启动定时任务（增加启动日志）
+autoResetLoadingStatus().catch(err => {
+  // 任务崩溃后自动重启
+  setTimeout(autoResetLoadingStatus, 5000);
+});
+
 // 确保记录文件存在
 const ensureRecordFile = () => {
   // 检查并创建棋局记录文件
@@ -47,28 +116,95 @@ const ensureRecordFile = () => {
 };
 ensureRecordFile();
 
-// --- 登录接口 ---
+// --- 登录接口（新增isLoading状态控制）---
 app.post('/api/login', (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.json({ success: false, message: '用户名或密码不能为空' });
     }
+
+    // 1. 读取用户列表，设置当前用户isLoading为true（加载中）
     const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
-    const user = users.find(u => u.username === username);
-    if (!user) return res.json({ success: false, message: '用户名不存在' });
-    if (user.password !== password) return res.json({ success: false, message: '密码错误' });
+    const userIndex = users.findIndex(u => u.username === username);
+    if (userIndex === -1) {
+      return res.json({ success: false, message: '用户名不存在' });
+    }
+    // 更新isLoading为true
+    users[userIndex].isLoading = true;
+    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+
+    // 2. 验证密码
+    const user = users[userIndex];
+    if (user.password !== password) {
+      // 密码错误时，重置isLoading为false
+      users[userIndex].isLoading = false;
+      fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+      return res.json({ success: false, message: '密码错误' });
+    }
+
+    //更新登陆时间
+    user.loginTime = getBeijingTimeISO();
+    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+
     res.json({
       success: true,
       message: '登录成功',
-      userInfo: { username: user.username, role: user.role, class: user.class }
+      userInfo: {
+        username: user.username,
+        role: user.role,
+        class: user.class,
+        loginTime: user.loginTime, // 登录时间
+        isLoading: user.isLoading // 返回登录状态
+      }
     });
   } catch (err) {
+    // 异常时，尽量重置isLoading为false
+    try {
+      const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+      const userIndex = users.findIndex(u => u.username === req.body.username);
+      if (userIndex !== -1) {
+        users[userIndex].isLoading = false;
+        fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+      }
+    } catch (e) { }
+
     res.json({ success: false, message: '登录失败', error: err.message });
   }
 });
 
-// --- 注册接口 ---
+// --- 新增：退出登录接口 ---
+app.post('/api/logout', (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.json({ success: false, message: '用户名不能为空' });
+    }
+
+    // 读取用户文件
+    const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+    const userIndex = users.findIndex(u => u.username === username);
+
+    if (userIndex === -1) {
+      return res.json({ success: false, message: '用户不存在' });
+    }
+
+    // 更新用户登录状态为false（无则新增字段）
+    users[userIndex] = {
+      ...users[userIndex],
+      isLoading: false, // 写入登录状态
+      logoutTime: getBeijingTimeISO()
+    };
+
+    // 写入修改后的用户数据
+    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+    res.json({ success: true, message: '退出成功', data: { username, isLogin: false } });
+  } catch (err) {
+    res.json({ success: false, message: '退出失败', error: err.message });
+  }
+});
+
+// --- 注册接口（新增isLoading默认值）---
 app.post('/api/signup', (req, res) => {
   try {
     const { username, password, role, class: className } = req.body;
@@ -88,13 +224,73 @@ app.post('/api/signup', (req, res) => {
       password,
       role,
       class: className,
-      createTime: new Date().toISOString()
+      createTime: getBeijingTimeISO(),
+      isLoading: false, // 新增用户默认isLoading为false
+      loginTime: null,
+      logoutTime: null
     };
     users.push(newUser);
     fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
-    res.json({ success: true, message: '注册成功', userInfo: { username, role, class: className } });
+    res.json({
+      success: true,
+      message: '注册成功',
+      userInfo: {
+        username,
+        role,
+        class: className,
+        isLoading: newUser.isLoading, // 返回状态
+        loginTime: null,
+        logoutTime: null
+      }
+    });
   } catch (err) {
     res.json({ success: false, message: '注册失败', error: err.message });
+  }
+});
+
+// --- 获取用户登录状态接口 ---
+app.post('/api/getUserLoadingStatus', (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.json({ success: false, message: '用户名不能为空' });
+    }
+    const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+    const user = users.find(u => u.username === username);
+    if (!user) {
+      return res.json({ success: false, message: '用户名不存在' });
+    }
+    res.json({
+      success: true,
+      isLoading: user.isLoading,
+      message: '获取登录状态成功'
+    });
+  } catch (err) {
+    res.json({ success: false, message: '获取状态失败', error: err.message });
+  }
+});
+
+// --- 重置用户登录状态接口（可选）---
+app.post('/api/resetUserLoadingStatus', (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.json({ success: false, message: '用户名不能为空' });
+    }
+    const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+    const userIndex = users.findIndex(u => u.username === username);
+    if (userIndex === -1) {
+      return res.json({ success: false, message: '用户名不存在' });
+    }
+    users[userIndex].isLoading = false;
+    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+    res.json({
+      success: true,
+      message: '重置登录状态成功',
+      isLoading: users[userIndex].isLoading
+    });
+  } catch (err) {
+    res.json({ success: false, message: '重置状态失败', error: err.message });
   }
 });
 
@@ -177,6 +373,7 @@ const getLocalIp = () => {
   return localIp;
 };
 const localIp = getLocalIp();
+
 
 // 启动HTTP服务
 http.createServer(app).listen(HTTP_PORT, '0.0.0.0', () => {
