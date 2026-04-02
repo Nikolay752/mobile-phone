@@ -1,2 +1,24 @@
 [
+  {
+    "id": 1775094858015,
+    "username": "wulian101",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-02T09:54:18.015Z",
+    "isLoading": false,
+    "loginTime": "2026-04-02T13:17:36.246Z",
+    "logoutTime": "2026-04-02T14:41:19.791Z"
+  },
+  {
+    "id": 1775094926312,
+    "username": "wulian102",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-02T09:55:26.312Z",
+    "isLoading": false,
+    "loginTime": "2026-04-02T09:55:34.250Z",
+    "logoutTime": "2026-04-02T09:55:37.387Z"
+  }
 ]

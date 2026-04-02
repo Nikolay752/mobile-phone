@@ -8,7 +8,9 @@ export default defineConfig({
     { path: "/system/teacher", component: "system_teacher" },
     { path: "/system/student", component: "system_student" },
     { path: "/game", component: "game" },
-    { path: "/map",component: "map"}
+    { path: "/map",component: "map"},
+    { path: "/game/GobangPage",component:"GobangPage"},
+    { path: "/game/TetrisPage",component:"TetrisPage"}
   ],
   npmClient: 'pnpm',
   scripts: [
@@ -20,7 +22,7 @@ export default defineConfig({
       changeOrigin: true,
       secure: false,
     },
-    '/api-http': { // 新增HTTP代理（可选）
+    '/api-http': { 
       target: 'http://localhost:8000',
       changeOrigin: true,
       pathRewrite: { '^/api-http': '/api' },

@@ -1,0 +1,174 @@
+// 全局容器
+.tetris {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  background: #282c34;
+  padding: 10px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+// 积分面板
+.score-board {
+  font-size: 26px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 12px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+// 棋盘容器
+.board {
+  display: grid;
+  grid-template-columns: repeat(10, 4vw);
+  grid-template-rows: repeat(20, 2vh);
+  gap: 1px;
+  background: #222;
+  padding: 2px;
+  border: 3px solid #444;
+  border-radius: 4px;
+  position: relative;
+}
+
+// 单个格子
+.cell {
+  width: 4vw;
+  height: 2vh;
+  background: #111;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+// 游戏结束文字
+.go {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  font-weight: bold;
+  color: #ff3d3d;
+  text-shadow: 0 0 10px #ff0000;
+  z-index: 10;
+}
+
+// 操作提示
+.tips {
+  color: #aaa;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+// 开始游戏按钮
+.start-btn {
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  background: #2196f3;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #1976d2;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+// =============================================
+// 移动端控制按钮（手机端显示，电脑端隐藏）
+// =============================================
+.mobile-controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+
+  // PC 端隐藏
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+// 通用控制按钮
+.control-btn {
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.15s;
+  touch-action: manipulation;
+  user-select: none;
+
+  &:disabled {
+    background: #666 !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+// 旋转按钮
+.rotate-btn {
+  width: 100%;
+  background: #ff9800;
+}
+
+// 方向按钮组
+.direction-btns {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+}
+
+// 左移
+.left-btn {
+  background: #4caf50;
+}
+
+// 加速下落
+.down-btn {
+  background: #f44336;
+}
+
+// 右移
+.right-btn {
+  background: #4caf50;
+}
+
+// =============================================
+// 手机屏幕自适应（更小屏幕自动缩小格子）
+// =============================================
+@media (max-width: 480px) {
+  .board {
+    grid-template-columns: repeat(10, 26px);
+    grid-template-rows: repeat(20, 26px);
+  }
+
+  .cell {
+    width: 26px;
+    height: 26px;
+  }
+
+  .score-board {
+    font-size: 22px;
+  }
+}
