@@ -126,34 +126,6 @@
   }
 }
 
-// 旋转按钮
-.rotate-btn {
-  width: 100%;
-  background: #ff9800;
-}
-
-// 方向按钮组
-.direction-btns {
-  display: flex;
-  width: 100%;
-  gap: 10px;
-}
-
-// 左移
-.left-btn {
-  background: #4caf50;
-}
-
-// 加速下落
-.down-btn {
-  background: #f44336;
-}
-
-// 右移
-.right-btn {
-  background: #4caf50;
-}
-
 // =============================================
 // 手机屏幕自适应（更小屏幕自动缩小格子）
 // =============================================
@@ -170,5 +142,52 @@
 
   .score-board {
     font-size: 22px;
+  }
+}
+// 移动端虚拟按键
+.mobile-controls {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+
+  .control-group {
+    display: flex;
+    gap: 12px;
+  }
+
+  .control-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    background: #333;
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    touch-action: manipulation; // 解决手机端点击延迟
+    user-select: none;
+
+    &:active {
+      background: #555;
+    }
+
+    &.big {
+      width: 240px;
+      height:80px;
+      border-radius: 40px;
+    }
+  }
+}
+
+// 适配手机屏幕
+@media (max-width: 768px) {
+  .tetris {
+    padding: 10px;
+  }
+  .board {
+    transform: scale(0.9);
   }
 }

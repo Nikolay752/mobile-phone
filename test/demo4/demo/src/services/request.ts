@@ -3,7 +3,7 @@ import request from 'umi-request'; // 修正导入路径（Umi 4+ 推荐）
 
 // 请求拦截器：统一添加 token 到请求头
 export const requestInterceptor = (url: string, options: any) => {
-  const token = localStorage.getItem('token');
+  /*const token = localStorage.getItem('token');
   if (token) {
     // 安全处理：确保 options.headers 存在
     options.headers = options.headers || {};
@@ -12,6 +12,7 @@ export const requestInterceptor = (url: string, options: any) => {
       'Authorization': `Bearer ${token}`,
     };
   }
+    */
   return { url, options };
 };
 

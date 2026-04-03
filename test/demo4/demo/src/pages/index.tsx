@@ -4,7 +4,7 @@ import btnstyles from '../layouts/button_login.less';
 import { useState, useEffect } from 'react';
 import { KeyboardEvent } from 'react';
 import Items from '../layouts/items';
-import { login, LoginResponse,logout } from '@/services/api';
+import { login, LoginResponse, logout } from '@/services/api';
 
 export default function Layout() {
   // 状态管理
@@ -80,6 +80,8 @@ export default function Layout() {
 
         setIsLoggedIn(true);
         navigate('/system');
+        localStorage.setItem('userInfo', JSON.stringify(res.userInfo));
+        // 跳转到游戏页
       } else {
         alert(res.message || '登录失败');
       }
@@ -111,7 +113,7 @@ export default function Layout() {
       setUsername('');
       setPassword('');
       localStorage.clear(); // 清空所有localStorage
-    }catch (error) {
+    } catch (error) {
       console.error('登出失败：', error);
     }
   };
