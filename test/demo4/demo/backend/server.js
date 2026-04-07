@@ -45,7 +45,7 @@ const initDefaultRecord = () => ({
   gameOver: false,
   winner: null,
   gameMode: 'human',
-  updateTime: new Date().toISOString()
+  updateTime: getBeijingTimeISO(),
 });
 
 // 定时重置所有用户的登录状态（修复版）
@@ -349,7 +349,7 @@ app.post('/api/gobang/updateRecord', (req, res) => {
       gameOver: gameOver ?? false,
       winner: winner ?? null,
       gameMode: gameMode ?? 'human',
-      updateTime: new Date().toISOString()
+      updateTime:getBeijingTimeISO(),
     };
 
     fs.writeFileSync(GOBANG_RECORD_PATH, JSON.stringify(newRecord, null, 2), 'utf8');
@@ -369,7 +369,6 @@ setInterval(() => {
   const now = Date.now();
   if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT){
     currentLock = {player:null, lockTime:null,clientId:null};
-    console.log('自动释放过期落子锁');
   }
 },1000);
 

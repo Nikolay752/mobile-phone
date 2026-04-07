@@ -7,7 +7,7 @@
     "class": "物联2301",
     "createTime": "2026-04-03T16:39:49.926Z",
     "isLoading": true,
-    "loginTime": "2026-04-04T22:14:29.140Z",
+    "loginTime": "2026-04-07T13:51:14.788Z",
     "logoutTime": null,
     "highestScore": 0
   },
@@ -18,9 +18,9 @@
     "role": "student",
     "class": "物联2302",
     "createTime": "2026-04-03T17:13:26.272Z",
-    "isLoading": true,
-    "loginTime": "2026-04-03T18:08:44.764Z",
-    "logoutTime": null,
+    "isLoading": false,
+    "loginTime": "2026-04-07T13:38:49.224Z",
+    "logoutTime": "2026-04-07T13:49:01.260Z",
     "highestScore": 0
   },
   {
