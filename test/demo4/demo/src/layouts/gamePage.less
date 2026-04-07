@@ -1,0 +1,68 @@
+// src/global.less
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.main {
+    width: 100vw;
+    height: 100vh;
+    background-color: #282c34;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+
+}
+
+.header {
+    width: 100vw;
+    height: 10vh;
+    background-color: #282c34;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-direction: column;
+    color: antiquewhite;
+    font-size: 20px;
+    margin-top: 5vh;
+    flex: 1;
+}
+
+.body {
+    margin: 0;
+    width: 100vw;
+    height: 80vh;
+    display: flex;
+    background-color: #282c34; // 如果你要黑色背景，直接设为黑色
+    color: antiquewhite;
+    flex: 6;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+}
+
+.footer {
+    width: 100vw;
+    height: 10vh;
+    background-color: #282c34;
+    display: flex;
+    color: antiquewhite;
+    flex: 1;
+}
+
+.linkItem {
+    display: inline-block;
+    color: aquamarine;
+    text-decoration: none;
+    transition: all 0.5s;
+    font-size: 40px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.linkItem:hover {
+    color: aqua;
+    transform: scale(1.2);
+}
