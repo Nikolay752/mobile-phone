@@ -4,6 +4,13 @@ function getBeijingTimeISO() {
   return beijingTime.toISOString();
 }
 
+const PLAYER_LOCK_TIMEOUT = 5000;
+let currentLock = {
+  player: null,
+  lockTime: null,
+  clientId: null
+}
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -335,7 +342,7 @@ app.post('/api/gobang/resetRecord', (req, res) => {
 // 更新棋盘
 app.post('/api/gobang/updateRecord', (req, res) => {
   try {
-    const { currentBoard, currentPlayer, gameOver, winner, gameMode } = req.body;
+    const { currentBoard, currentPlayer, gameOver, winner, gameMode,clientId } = req.body;
     const newRecord = {
       currentBoard: currentBoard || Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
       currentPlayer: currentPlayer || 'black',
@@ -346,14 +353,27 @@ app.post('/api/gobang/updateRecord', (req, res) => {
     };
 
     fs.writeFileSync(GOBANG_RECORD_PATH, JSON.stringify(newRecord, null, 2), 'utf8');
+
+    //骡子后释放锁
+    if(clientId && currentLock.clientId === clientId){
+      currentLock = {player:null,lockTime:null,clientId:null};
+    }
     res.json({ code: 200, msg: '更新成功', data: newRecord });
   } catch (err) {
     res.json({ code: 500, msg: '更新失败', error: err.message });
   }
 });
 
+//定时清理过期锁
+setInterval(() => {
+  const now = Date.now();
+  if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT){
+    currentLock = {player:null, lockTime:null,clientId:null};
+    console.log('自动释放过期落子锁');
+  }
+},1000);
+
 // 更新用户最高分
-// 更新用户最高分（修复版）
 app.post('/api/updateHighestScore', async (req, res) => { // 改为async
   try {
     const { username, score } = req.body;
@@ -466,6 +486,42 @@ app.post('/api/getHighestScore', (req, res) => { // 修复req/res顺序
     });
   }
 });
+
+//获取落子锁接口
+app.post('/api/gobang/getChessLock', (req, res) => {
+  try {
+    const { clientId, targetPlayer } = req.body;
+    const now = Date.now();
+
+    //检查锁是否过期
+    if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT) {
+      currentLock = { palyer: null, lockTime: null, clientId: null };
+    }
+
+    //检查目标玩家是否可锁定
+    const record = JSON.parse(fs.readFileSync(GOBANG_RECORD_PATH,'utf8'));
+    if(record.gameOver) {
+      return res.json({code:400,msg:'游戏已结束，无法获取锁'});
+    }
+    if (record.currentPlayer === targetPlayer){
+      if(!currentLock.player || currentLock.clientId === clientId){
+        currentLock ={ 
+          player:targetPlayer,
+          lockTime:now,
+          clientId
+        };
+        return res.json({code:200,msg:'获取锁成功',data:{hasLock: true} });
+      }else{
+        return res.json({ code:403,msg:'当前回合被其他玩家占用',data:{hasLock:false}});
+      }
+    }else{
+      return res.json({code:400,msg:'非当前回合，无法获取锁',data:{hasLock: false}});
+    }
+  }catch(err){
+    res.json({code:500,msg:'获取锁失败',error:err.message});
+  }
+});
+
 
 // GET 请求提示
 app.get('/api/login', (req, res) => {

@@ -1,2 +1,38 @@
 [
+  {
+    "id": 1775205589926,
+    "username": "wulian101",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-03T16:39:49.926Z",
+    "isLoading": true,
+    "loginTime": "2026-04-04T22:14:29.140Z",
+    "logoutTime": null,
+    "highestScore": 0
+  },
+  {
+    "id": 1775207606272,
+    "username": "wulian201",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2302",
+    "createTime": "2026-04-03T17:13:26.272Z",
+    "isLoading": true,
+    "loginTime": "2026-04-03T18:08:44.764Z",
+    "logoutTime": null,
+    "highestScore": 0
+  },
+  {
+    "id": 1775311999819,
+    "username": "wulian102",
+    "password": "123456",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-04T22:13:19.819Z",
+    "isLoading": true,
+    "loginTime": "2026-04-04T22:13:30.399Z",
+    "logoutTime": null,
+    "highestScore": 0
+  }
 ]
