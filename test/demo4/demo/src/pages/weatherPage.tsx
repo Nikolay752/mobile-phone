@@ -52,7 +52,7 @@ function WeatherPage() {
                 });
 
                 const data: WeatherRes = await res.json();
-                // 取第一个数据项，若不存在则用兜底值F
+                // 取第一个数据项，若不存在则用兜底值
                 const resData = data?.data?.data?.[0] || {
                     ...weatherData,
                     city:'北京',

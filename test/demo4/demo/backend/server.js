@@ -29,6 +29,10 @@ const getLocationByIP = async () => {
 
     console.log('IP定位结果:', ipRes); // 日志：查看定位是否成功
     // 优先返回adcode，兜底北京adcode 110000
+    if (ipRes.status !== '1'){
+      console.warn('高德IP定位失败，状态码:',ipRes.status);
+      return '110000';
+    }
     return ipRes.adcode || '110000';
   } catch (err) {
     console.error('IP定位失败，默认北京:', err);
@@ -569,6 +573,11 @@ app.get('/api/gobang/updateRecord', (req, res) => {
 app.get('/api/weather', async (req, res) => {
   try {
     const { city } = req.query;
+    console.log('天气接口请求:',{
+      clientIP:req.ip,
+      city,
+      time:new Date().toLocaleString()
+    });
     let adcode = city;
 
     // 1. 处理城市名转adcode
