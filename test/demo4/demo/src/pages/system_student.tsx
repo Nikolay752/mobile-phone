@@ -117,8 +117,6 @@ export default function SystemPage() {
           <Refresh />
           {refreshing }
         </div>
-        <div className={button.button} onClick={() => navigate('/')
-        }>logout</div>
         <div className={button.button} onClick={() => navigate('/system')}>
           back
           </div>

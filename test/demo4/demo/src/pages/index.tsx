@@ -79,7 +79,6 @@ export default function Layout() {
         localStorage.setItem('isLoggedIn', 'true');
 
         setIsLoggedIn(true);
-        navigate('/system');
         localStorage.setItem('userInfo', JSON.stringify(res.userInfo));
         // 跳转到游戏页
       } else {

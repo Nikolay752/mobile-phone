@@ -145,9 +145,6 @@ export default function SystemPage() {
                     <Refresh />
                     {refreshing && <span style={{ fontSize: '12px', color: '#409eff' }}>刷新中...</span>}
                 </div>
-                <div className={button.button} onClick={() => navigate('/')}>
-                    logout
-                </div>
                 <div className={button.button} onClick={() => navigate('/system')}>
                     back
                 </div>

@@ -7,7 +7,7 @@
     "class": "物联2301",
     "createTime": "2026-04-03T16:39:49.926Z",
     "isLoading": true,
-    "loginTime": "2026-04-07T13:51:14.788Z",
+    "loginTime": "2026-04-08T13:15:54.891Z",
     "logoutTime": null,
     "highestScore": 0
   },
@@ -18,9 +18,9 @@
     "role": "student",
     "class": "物联2302",
     "createTime": "2026-04-03T17:13:26.272Z",
-    "isLoading": false,
-    "loginTime": "2026-04-07T13:38:49.224Z",
-    "logoutTime": "2026-04-07T13:49:01.260Z",
+    "isLoading": true,
+    "loginTime": "2026-04-08T14:18:06.756Z",
+    "logoutTime": null,
     "highestScore": 0
   },
   {
@@ -30,9 +30,9 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-04T22:13:19.819Z",
-    "isLoading": true,
-    "loginTime": "2026-04-04T22:13:30.399Z",
-    "logoutTime": null,
+    "isLoading": false,
+    "loginTime": "2026-04-08T11:40:26.017Z",
+    "logoutTime": "2026-04-08T13:17:17.202Z",
     "highestScore": 0
   }
 ]

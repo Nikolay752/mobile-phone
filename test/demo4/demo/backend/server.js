@@ -11,6 +11,32 @@ let currentLock = {
   clientId: null
 }
 
+//高德API配置
+const AMAP_KEY = 'b52061872e123ac6b92b675264093fb9';
+const AMAP_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo';
+const AMAP_IP_LOCATION_URL = 'https://restapi.amap.com/v3/ip';
+
+const getLocationByIP = async () => {
+  try {
+    const ipRes = await new Promise((resolve, reject) => {
+      https.get(`${AMAP_IP_LOCATION_URL}?key=${AMAP_KEY}`, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve(JSON.parse(data)));
+        res.on('error', reject);
+      });
+    });
+
+    console.log('IP定位结果:', ipRes); // 日志：查看定位是否成功
+    // 优先返回adcode，兜底北京adcode 110000
+    return ipRes.adcode || '110000';
+  } catch (err) {
+    console.error('IP定位失败，默认北京:', err);
+    return '110000'; // 强制兜底，绝不返回空
+  }
+};
+
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -20,6 +46,8 @@ const https = require('https');
 const os = require('os');
 const app = express();
 const { setTimeout } = require('timers/promises');
+const { resolve } = require('dns');
+const { rejects } = require('assert');
 
 const HTTPS_PORT = 8443;
 const HTTP_PORT = 8000;
@@ -342,21 +370,21 @@ app.post('/api/gobang/resetRecord', (req, res) => {
 // 更新棋盘
 app.post('/api/gobang/updateRecord', (req, res) => {
   try {
-    const { currentBoard, currentPlayer, gameOver, winner, gameMode,clientId } = req.body;
+    const { currentBoard, currentPlayer, gameOver, winner, gameMode, clientId } = req.body;
     const newRecord = {
       currentBoard: currentBoard || Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)),
       currentPlayer: currentPlayer || 'black',
       gameOver: gameOver ?? false,
       winner: winner ?? null,
       gameMode: gameMode ?? 'human',
-      updateTime:getBeijingTimeISO(),
+      updateTime: getBeijingTimeISO()
     };
 
     fs.writeFileSync(GOBANG_RECORD_PATH, JSON.stringify(newRecord, null, 2), 'utf8');
 
     //骡子后释放锁
-    if(clientId && currentLock.clientId === clientId){
-      currentLock = {player:null,lockTime:null,clientId:null};
+    if (clientId && currentLock.clientId === clientId) {
+      currentLock = { player: null, lockTime: null, clientId: null };
     }
     res.json({ code: 200, msg: '更新成功', data: newRecord });
   } catch (err) {
@@ -367,10 +395,10 @@ app.post('/api/gobang/updateRecord', (req, res) => {
 //定时清理过期锁
 setInterval(() => {
   const now = Date.now();
-  if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT){
-    currentLock = {player:null, lockTime:null,clientId:null};
+  if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT) {
+    currentLock = { player: null, lockTime: null, clientId: null };
   }
-},1000);
+}, 1000);
 
 // 更新用户最高分
 app.post('/api/updateHighestScore', async (req, res) => { // 改为async
@@ -494,30 +522,30 @@ app.post('/api/gobang/getChessLock', (req, res) => {
 
     //检查锁是否过期
     if (currentLock.lockTime && (now - currentLock.lockTime) > PLAYER_LOCK_TIMEOUT) {
-      currentLock = { palyer: null, lockTime: null, clientId: null };
+      currentLock = { player: null, lockTime: null, clientId: null };
     }
 
     //检查目标玩家是否可锁定
-    const record = JSON.parse(fs.readFileSync(GOBANG_RECORD_PATH,'utf8'));
-    if(record.gameOver) {
-      return res.json({code:400,msg:'游戏已结束，无法获取锁'});
+    const record = JSON.parse(fs.readFileSync(GOBANG_RECORD_PATH, 'utf8'));
+    if (record.gameOver) {
+      return res.json({ code: 400, msg: '游戏已结束，无法获取锁' });
     }
-    if (record.currentPlayer === targetPlayer){
-      if(!currentLock.player || currentLock.clientId === clientId){
-        currentLock ={ 
-          player:targetPlayer,
-          lockTime:now,
+    if (record.currentPlayer === targetPlayer) {
+      if (!currentLock.player || currentLock.clientId === clientId) {
+        currentLock = {
+          player: targetPlayer,
+          lockTime: now,
           clientId
         };
-        return res.json({code:200,msg:'获取锁成功',data:{hasLock: true} });
-      }else{
-        return res.json({ code:403,msg:'当前回合被其他玩家占用',data:{hasLock:false}});
+        return res.json({ code: 200, msg: '获取锁成功', data: { hasLock: true } });
+      } else {
+        return res.json({ code: 403, msg: '当前回合被其他玩家占用', data: { hasLock: false } });
       }
-    }else{
-      return res.json({code:400,msg:'非当前回合，无法获取锁',data:{hasLock: false}});
+    } else {
+      return res.json({ code: 400, msg: '非当前回合，无法获取锁', data: { hasLock: false } });
     }
-  }catch(err){
-    res.json({code:500,msg:'获取锁失败',error:err.message});
+  } catch (err) {
+    res.json({ code: 500, msg: '获取锁失败', error: err.message });
   }
 });
 
@@ -535,6 +563,117 @@ app.get('/api/gobang/resetRecord', (req, res) => {
 app.get('/api/gobang/updateRecord', (req, res) => {
   res.json({ code: 405, msg: '该接口仅支持POST请求，请使用POST方式调用' });
 });
+
+// 3. 改造原天气接口 /api/weather
+// 替换server.js中原有所有/api/weather代码，直接复制
+app.get('/api/weather', async (req, res) => {
+  try {
+    const { city } = req.query;
+    let adcode = city;
+
+    // 1. 处理城市名转adcode
+    if (city && !/^\d{6}$/.test(city)) {
+      const geoRes = await new Promise((resolve, reject) => {
+        https.get(
+          `https://restapi.amap.com/v3/geocode/geo?key=${AMAP_KEY}&address=${encodeURIComponent(city)}`,
+          (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(JSON.parse(data)));
+            res.on('error', reject);
+          }
+        );
+      });
+      adcode = geoRes.geocodes?.[0]?.adcode || '110000';
+    } else if (!city) {
+      // 无参数时自动IP定位
+      adcode = await getLocationByIP();
+    }
+
+    console.log('最终adcode:', adcode); // 日志：确认adcode正确
+
+    // 2. 调用高德天气API（强制extensions=base，只拿实时数据，更稳定）
+    const weatherRes = await new Promise((resolve, reject) => {
+      https.get(
+        `${AMAP_WEATHER_URL}?key=${AMAP_KEY}&city=${adcode}&extensions=base&output=json`,
+        (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => resolve(JSON.parse(data)));
+          res.on('error', reject);
+        }
+      );
+    });
+
+    // 3. API结果校验+兜底
+    if (weatherRes.status !== '1' || !weatherRes.lives || !weatherRes.lives[0]) {
+      console.error('高德API返回异常:', weatherRes);
+      // 异常时直接返回兜底数据，前端永远不报错
+      return res.json({
+        success: true,
+        data: {
+          data: [{
+            city: '北京',
+            tem1: '11',
+            tem2: '21',
+            wea: '多云',
+            win: '东北风',
+            win_speed: '3级',
+            humidity: '50',
+            update_time: new Date().toLocaleString()
+          }]
+        }
+      });
+    }
+
+    const liveWeather = weatherRes.lives[0];
+    // 4. 全字段格式化+兜底，彻底杜绝undefined
+    const formattedData = {
+      data: [{
+        city: liveWeather.city || '北京',
+        tem1: liveWeather.temperature || '11',
+        tem2: liveWeather.temperature || '21',
+        wea: liveWeather.weather || '多云',
+        win: liveWeather.winddirection || '东北风',
+        win_speed: liveWeather.windpower ? `${liveWeather.windpower}级` : '3级',
+        humidity: liveWeather.humidity || '50',
+        update_time: liveWeather.reporttime || new Date().toLocaleString()
+      }]
+    };
+
+    res.json({ success: true, data: formattedData });
+  } catch (err) {
+    console.error('天气接口全局异常:', err);
+    // 全局异常兜底，前端永远能拿到数据
+    res.json({
+      success: true,
+      data: {
+        data: [{
+          city: '北京',
+          tem1: '11',
+          tem2: '21',
+          wea: '多云',
+          win: '东北风',
+          win_speed: '3级',
+          humidity: '50',
+          update_time: new Date().toLocaleString()
+        }]
+      }
+    });
+  }
+});
+
+//获取城市，默认北京
+const getCity = async () => {
+  try {
+    const res = await fetch("https://ipapi.co/json/");
+    const data = await res.json();
+    return data.city || "北京";
+  } catch {
+    console.error("定位失败，默认北京");
+    return "北京";
+  }
+}
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '../dist')));

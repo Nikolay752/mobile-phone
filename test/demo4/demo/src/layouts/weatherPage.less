@@ -1,0 +1,137 @@
+.loadWeather {
+    background-color: #1e293b;
+    height: 100vh;
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+//天气信息卡片
+.weatherCard {
+  // 核心定位：居中显示
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  // 半透明白色背景 + 毛玻璃效果
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px); // 毛玻璃模糊效果
+  
+  // 圆角 + 内边距
+  border-radius: 20px;
+  padding: 30px 40px;
+  
+  // 宽度限制
+  min-width: 320px;
+  max-width: 500px;
+  
+  // 阴影 + 边框
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  
+  // 文字样式
+  color: #000000;
+  text-align: center;
+}
+
+.city{
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.weatherIcon{
+    font-size: 48px;
+}
+
+.weather{
+    font-size: 20;
+}
+
+.temp{
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.detailInfo{
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+    gap: 15px;
+    text-align: left;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.wind{
+    display: flex;
+    gap: 8px;
+}
+
+.humidity{
+    display: flex;
+    gap: 8px;
+}
+
+.updateTime{
+    display: flex;
+    gap: 8px;
+    grid-column: 1 / -1;
+}
+
+.backButton {
+  // 基础布局
+  display: block;
+  margin: 20px auto 0; // 居中 + 与标题间距
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6); // 半透明白色边框
+  background: rgba(255, 255, 255, 0.2); // 透明背景，适配任意天气背景
+  color: #000000; // 白色文字（与大多数天气背景对比明显）
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1; // 确保在背景上层
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); // 文字阴影增强可读性
+  transition: all 0.3s ease; // 过渡动画
+
+  // 去除按钮默认样式
+  appearance: none;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  // hover状态：加深背景/边框，增强交互
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px); // 轻微上浮
+  }
+
+  // active状态：按下反馈
+  &:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  // 响应式适配（可选）
+  @media (max-width: 768px) {
+    padding: 8px 20px;
+    font-size: 14px;
+  }
+}
+
+// 若需要根据不同天气背景动态调整按钮样式（进阶）
+// 可结合WeatherBackground的className，比如：
+.weather-bg-sunny .backButton {
+  border-color: rgba(255, 204, 0, 0.6);
+  color: #ffcc00;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.weather-bg-rainy .backButton {
+  border-color: rgba(102, 178, 255, 0.6);
+  color: #66b2ff;
+}
