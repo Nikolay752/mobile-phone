@@ -58,7 +58,7 @@ export const ThunderstormBackground: React.FC = () => {
     const animate = () => {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       // 绘制雨夜背景
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, '#0f2027');
@@ -69,10 +69,40 @@ export const ThunderstormBackground: React.FC = () => {
 
       // 绘制闪电：增加亮度，更明显
       if (flash) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // 闪电轮廓：增加蓝色辉光
-        ctx.fillStyle = 'rgba(100, 180, 255, 0.2)';
+        // 主闪电（随机分支）
+        const drawLightning = () => {
+          ctx.beginPath();
+          let x = canvas.width * 0.3 + Math.random() * canvas.width * 0.4;
+          let y = 0;
+          ctx.moveTo(x, y);
+          // 随机分支绘制
+          for (let i = 0; i < 20; i++) {
+            const stepX = (Math.random() - 0.5) * 30;
+            const stepY = Math.random() * 40 + 20;
+            x += stepX;
+            y += stepY;
+            ctx.lineTo(x, y);
+            // 绘制分支
+            if (Math.random() > 0.7) {
+              const branchX = x + (Math.random() - 0.5) * 20;
+              const branchY = y + Math.random() * 30;
+              ctx.moveTo(x, y);
+              ctx.lineTo(branchX, branchY);
+            }
+            if (y > canvas.height) break;
+          }
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.lineWidth = 3 + Math.random() * 2;
+          ctx.stroke();
+          // 闪电辉光
+          ctx.filter = 'blur(5px)';
+          ctx.strokeStyle = 'rgba(100, 180, 255, 0.6)';
+          ctx.stroke();
+          ctx.filter = 'none';
+        };
+        drawLightning();
+        // 全局闪光明暗
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
@@ -118,8 +148,8 @@ export const ThunderstormBackground: React.FC = () => {
   }, [flash]);
 
   return (
-    <canvas 
-      ref={canvasRef} 
+    <canvas
+      ref={canvasRef}
       className="weather-bg"
     />
   );

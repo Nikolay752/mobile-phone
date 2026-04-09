@@ -44,28 +44,40 @@ export const SnowBackground: React.FC<{ snowIntensity: SnowIntensity }> = ({ sno
       size: size + Math.random() * 2,
       speed: speed + Math.random() * 0.5,
       opacity: opacity - Math.random() * 0.3,
-      sway: Math.random() * 2 - 1, // 水平摇摆
+      sway: Math.random() * 2 - 1,
+      rotateSpeed: Math.random() * 1 + 0.5, // 旋转速度
+      rotation: 0, // 当前旋转角度
     }));
 
     const animateSnow = () => {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       snowflakes.forEach(flake => {
+        ctx.save(); // 保存画布状态
+        // 平移到雪花中心，旋转后绘制
+        ctx.translate(flake.x, flake.y);
+        ctx.rotate((flake.rotation * Math.PI) / 180);
+        // 绘制雪花（从圆形改为六角形更真实，或保留圆形+旋转）
         ctx.beginPath();
-        ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2);
+        ctx.arc(0, 0, flake.size, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${flake.opacity})`;
         ctx.fill();
+        ctx.restore(); // 恢复画布状态
 
-        // 雪花下落+摇摆
+        // 更新雪花状态
         flake.y += flake.speed;
         flake.x += flake.sway * 0.6;
-        // 轻微旋转，增加真实感
         flake.sway = flake.sway + (Math.random() * 0.2 - 0.1);
+        // 旋转更新
+        flake.rotation += flake.rotateSpeed;
+        if (flake.rotation > 360) flake.rotation = 0;
 
+        // 边界重置
         if (flake.y > canvas.height) {
           flake.y = -flake.size;
           flake.x = Math.random() * canvas.width;
           flake.sway = Math.random() * 2 - 1;
+          flake.rotateSpeed = Math.random() * 1 + 0.5;
         }
       });
       animationIdRef.current = requestAnimationFrame(animateSnow);

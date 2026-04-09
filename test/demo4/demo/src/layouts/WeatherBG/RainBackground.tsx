@@ -55,17 +55,25 @@ export const RainBackground: React.FC<{ rainIntensity: RainIntensity }> = ({ rai
     const animateRain = () => {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      raindrops.forEach(drop => {
+      raindrops.forEach((drop, index) => {
         ctx.beginPath();
         ctx.moveTo(drop.x, drop.y);
         ctx.lineTo(drop.x, drop.y + drop.length);
         ctx.strokeStyle = `rgba(173, 216, 230, ${drop.opacity})`;
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.2 + Math.random() * 0.5; // 雨滴粗细随机
         ctx.stroke();
 
         // 雨滴下落
         drop.y += drop.speed;
-        if (drop.y > canvas.height) {
+        // 检测雨滴落地，绘制涟漪
+        if (drop.y + drop.length >= canvas.height) {
+          // 绘制涟漪
+          ctx.beginPath();
+          ctx.arc(drop.x, canvas.height, 3 + Math.random() * 4, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(173, 216, 230, ${0.5 - Math.random() * 0.2})`;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+          // 重置雨滴位置
           drop.y = -drop.length;
           drop.x = Math.random() * canvas.width;
         }

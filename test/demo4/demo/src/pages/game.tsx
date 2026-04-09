@@ -1,6 +1,6 @@
 import React from "react";
 import Gobang from "../GobangModule/Gobang";
-import Styles from "../GobangModule/page.less";
+import Styles from "../layouts/gamePage.less";
 import button from "../layouts/button_back.less";
 import { useNavigate } from "umi";
 // 1. 直接导入 GameList 组件（默认导入）

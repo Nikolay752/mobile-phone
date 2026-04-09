@@ -1,4 +1,4 @@
-/* 基础背景样式：统一层级，避免遮挡 */
+/* 基础背景样式：强化层级与质感 */
 .weather-bg {
   position: absolute;
   top: 0;
@@ -6,127 +6,526 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  z-index: 0; /* 替换-1，避免被根节点遮挡，主组件再控制层级 */
-  pointer-events: none; /* 避免背景拦截鼠标事件 */
+  z-index: 0;
+  pointer-events: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 晴天样式：优化渐变、太阳大小 */
+/* ========== 晴天样式：增强光影与层次感 ========== */
 .sunny {
-  background: linear-gradient(180deg, #ffecd2 0%, #fcb69f 100%);
+  background: linear-gradient(180deg, 
+    #ffecd2 0%, 
+    #ffd194 50%, 
+    #fcb69f 100%);
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
+
+/* 太阳：增加核心发光+渐变，模拟真实光晕 */
 .sun {
   position: absolute;
   top: 10%;
   right: 15%;
-  width: 100px;
-  height: 100px;
-  background: #ffeb3b;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, 
+    #fff9c4 0%, 
+    #ffeb3b 50%, 
+    #ffc107 100%);
   border-radius: 50%;
-  box-shadow: 0 0 40px #ffeb3b, 0 0 80px #ffc107, 0 0 120px rgba(255,193,7,0.5);
-  animation: pulse 3s ease-in-out infinite alternate;
+  box-shadow: 
+    0 0 30px #ffeb3b, 
+    0 0 60px rgba(255,235,59,0.8), 
+    0 0 90px rgba(255,193,7,0.6),
+    0 0 120px rgba(255,152,0,0.4);
+  animation: 
+    sunPulse 4s ease-in-out infinite alternate,
+    sunSway 8s ease-in-out infinite;
 }
 
-/* 太阳射线：增加8条射线，修复只有1条的问题 */
+/* 太阳射线：渐变+粗细变化，模拟真实光线衰减 */
 .sun-rays {
   position: absolute;
   top: 10%;
   right: 15%;
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  animation: rayMove 8s linear infinite;
+  animation: rayRotate 12s linear infinite;
   transform-origin: center;
 }
+
 .sun-rays::before, .sun-rays::after,
 .sun-rays span:nth-child(1), .sun-rays span:nth-child(2),
 .sun-rays span:nth-child(3), .sun-rays span:nth-child(4),
 .sun-rays span:nth-child(5), .sun-rays span:nth-child(6) {
   content: '';
   position: absolute;
-  width: 4px;
-  height: 45px;
-  background: #ffeb3b;
-  box-shadow: 0 0 10px #ffeb3b;
+  background: linear-gradient(to top, 
+    transparent, 
+    rgba(255,235,59,0.8), 
+    #ffeb3b);
+  box-shadow: 0 0 8px #ffeb3b;
   left: 50%;
-  top: -20px;
+  top: -25px;
   transform: translateX(-50%) rotate(0deg);
+  width: calc(3px + var(--ray-width, 2px));
+  height: 60px;
+  border-radius: 2px;
 }
-.sun-rays::after { transform: translateX(-50%) rotate(45deg); }
-.sun-rays span:nth-child(1) { transform: translateX(-50%) rotate(90deg); }
-.sun-rays span:nth-child(2) { transform: translateX(-50%) rotate(135deg); }
-.sun-rays span:nth-child(3) { transform: translateX(-50%) rotate(180deg); }
-.sun-rays span:nth-child(4) { transform: translateX(-50%) rotate(225deg); }
-.sun-rays span:nth-child(5) { transform: translateX(-50%) rotate(270deg); }
-.sun-rays span:nth-child(6) { transform: translateX(-50%) rotate(315deg); }
 
-/* 云朵：优化动画速度，避免平移异常 */
+.sun-rays::before { --ray-width: 1px; }
+.sun-rays::after { --ray-width: 3px; transform: translateX(-50%) rotate(45deg); }
+.sun-rays span:nth-child(1) { --ray-width: 2px; transform: translateX(-50%) rotate(90deg); }
+.sun-rays span:nth-child(2) { --ray-width: 4px; transform: translateX(-50%) rotate(135deg); }
+.sun-rays span:nth-child(3) { --ray-width: 1.5px; transform: translateX(-50%) rotate(180deg); }
+.sun-rays span:nth-child(4) { --ray-width: 3.5px; transform: translateX(-50%) rotate(225deg); }
+.sun-rays span:nth-child(5) { --ray-width: 2.5px; transform: translateX(-50%) rotate(270deg); }
+.sun-rays span:nth-child(6) { --ray-width: 1.8px; transform: translateX(-50%) rotate(315deg); }
+
+/* 云朵：分层+体积感+随机摇摆 */
 .cloud {
   position: absolute;
-  background: rgba(255,255,255,0.9);
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.8) 100%
+  );
   border-radius: 50px;
-  filter: blur(8px);
-  animation: cloudMove 30s linear infinite;
-}
-.cloud-1 {
-  width: 150px;
-  height: 60px;
-  top: 15%;
-  left: -200px;
-}
-.cloud-2 {
-  width: 100px;
-  height: 40px;
-  top: 25%;
-  right: -150px;
-  animation-delay: -12s;
-  animation-duration: 35s;
+  filter: blur(10px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+  animation: 
+    cloudMove 60s linear infinite,
+    cloudFloat 15s ease-in-out infinite alternate;
 }
 
-/* 雾/霾：扩大雾层范围，解决边缘空白，优化透明度 */
-.fog {
-  opacity: 0.8 !important;
+.cloud-1 {
+  width: 200px;
+  height: 70px;
+  top: 15%;
+  left: -250px;
 }
+
+.cloud-1::before {
+  content: '';
+  position: absolute;
+  width: 100px;
+  height: 80px;
+  background: inherit;
+  border-radius: 50%;
+  top: -40px;
+  left: 30px;
+  filter: blur(10px);
+}
+
+.cloud-1::after {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 70px;
+  background: inherit;
+  border-radius: 50%;
+  top: -30px;
+  right: 20px;
+  filter: blur(10px);
+}
+
+.cloud-2 {
+  width: 120px;
+  height: 50px;
+  top: 25%;
+  right: -180px;
+  animation-delay: -15s;
+  animation-duration: 70s;
+}
+
+.cloud-2::before {
+  content: '';
+  position: absolute;
+  width: 70px;
+  height: 60px;
+  background: inherit;
+  border-radius: 50%;
+  top: -30px;
+  left: 20px;
+  filter: blur(10px);
+}
+
+/* ========== 雾/霾样式：动态透明度+流动分层 ========== */
+.fog {
+  opacity: 0.85 !important;
+  background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 80%, #80deea 100%) !important;
+}
+
 .haze {
   opacity: 1 !important;
-  background: linear-gradient(180deg, #9e9e9e 0%, #cfd8dc 100%) !important;
-}
-.fog-layer {
-  position: absolute;
-  width: 200%; /* 扩大2倍，避免边缘空白 */
-  height: 200%;
-  top: -50%;
-  left: -50%; /* 居中雾层 */
-  background: white;
-  border-radius: 50%;
-  filter: blur(80px); /* 降低模糊度提升兼容性 */
-  opacity: 0.4;
-  animation: fogMove 40s linear infinite;
-}
-.layer-2 {
-  animation-delay: -8s;
-  opacity: 0.3;
-}
-.layer-3 {
-  background: #b0b0b0;
-  animation-delay: -20s;
-  opacity: 0.3;
+  /* ✅ 修复：多背景用逗号分隔，去掉错误分号 */
+  background: 
+    linear-gradient(180deg, #9e9e9e 0%, #cfd8dc 80%, #b0bec5 100%),
+    radial-gradient(rgba(160,160,160,0.1) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 15px 15px;
 }
 
-/* 动画关键帧：优化速度，增加缓动 */
-@keyframes pulse {
-  from { transform: scale(1); }
-  to { transform: scale(1.15); }
+.fog-layer {
+  position: absolute;
+  width: 250%;
+  height: 250%;
+  top: -75%;
+  left: -75%;
+  background: white;
+  border-radius: 50%;
+  filter: blur(90px);
+  /* ✅ 修复：定义变量，避免动画报错 */
+  --initial-opacity: 0.4;
+  animation: 
+    fogFlow 60s ease-in-out infinite,
+    fogFade 20s ease-in-out infinite alternate;
 }
-@keyframes rayMove {
+
+.layer-1 {
+  --initial-opacity: 0.45;
+  animation-duration: 70s;
+}
+
+.layer-2 {
+  --initial-opacity: 0.35;
+  opacity: 0.35;
+  animation-delay: -12s;
+  animation-duration: 85s;
+  filter: blur(70px);
+}
+
+.layer-3 {
+  background: #b0b0b0;
+  --initial-opacity: 0.3;
+  opacity: 0.3;
+  animation-delay: -25s;
+  animation-duration: 95s;
+  filter: blur(100px);
+}
+
+/* ========== 自定义动画关键帧 ========== */
+@keyframes sunPulse {
+  0% { transform: scale(1); box-shadow: 0 0 30px #ffeb3b, 0 0 60px rgba(255,235,59,0.8), 0 0 90px rgba(255,193,7,0.6), 0 0 120px rgba(255,152,0,0.4); }
+  100% { transform: scale(1.18); box-shadow: 0 0 40px #ffeb3b, 0 0 80px rgba(255,235,59,0.9), 0 0 110px rgba(255,193,7,0.7), 0 0 140px rgba(255,152,0,0.5); }
+}
+
+@keyframes sunSway {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-5px, 3px) rotate(1deg); }
+  50% { transform: translate(3px, -2px) rotate(-1deg); }
+  75% { transform: translate(-3px, 5px) rotate(0.5deg); }
+}
+
+@keyframes rayRotate {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
 @keyframes cloudMove {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(calc(100vw + 300px)); }
+  0% { transform: translateX(0) rotate(0deg); }
+  100% { transform: translateX(calc(100vw + 350px)) rotate(2deg); }
 }
-@keyframes fogMove {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(-30px, 15px); }
-  100% { transform: translate(0, 0); }
+
+@keyframes cloudFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-15px); }
+}
+
+@keyframes fogFlow {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-40px, 10px) scale(1.02); }
+  50% { transform: translate(-20px, 20px) scale(0.98); }
+  75% { transform: translate(-50px, 5px) scale(1.01); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes fogFade {
+  0% { opacity: var(--initial-opacity); }
+  100% { opacity: calc(var(--initial-opacity) - 0.1); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes snowSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes thunderFlash {
+  0%, 100% { opacity: 0; }
+  20% { opacity: 0.8; }
+  40% { opacity: 0.3; }
+  60% { opacity: 0.9; }
+  80% { opacity: 0.2; }
+}/* 基础背景样式：强化层级与质感 */
+.weather-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== 晴天样式：增强光影与层次感 ========== */
+.sunny {
+  background: linear-gradient(180deg, 
+    #ffecd2 0%, 
+    #ffd194 50%, 
+    #fcb69f 100%);
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 太阳：增加核心发光+渐变，模拟真实光晕 */
+.sun {
+  position: absolute;
+  top: 10%;
+  right: 15%;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, 
+    #fff9c4 0%, 
+    #ffeb3b 50%, 
+    #ffc107 100%);
+  border-radius: 50%;
+  box-shadow: 
+    0 0 30px #ffeb3b, 
+    0 0 60px rgba(255,235,59,0.8), 
+    0 0 90px rgba(255,193,7,0.6),
+    0 0 120px rgba(255,152,0,0.4);
+  animation: 
+    sunPulse 4s ease-in-out infinite alternate,
+    sunSway 8s ease-in-out infinite;
+}
+
+/* 太阳射线：渐变+粗细变化，模拟真实光线衰减 */
+.sun-rays {
+  position: absolute;
+  top: 10%;
+  right: 15%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  animation: rayRotate 12s linear infinite;
+  transform-origin: center;
+}
+
+.sun-rays::before, .sun-rays::after,
+.sun-rays span:nth-child(1), .sun-rays span:nth-child(2),
+.sun-rays span:nth-child(3), .sun-rays span:nth-child(4),
+.sun-rays span:nth-child(5), .sun-rays span:nth-child(6) {
+  content: '';
+  position: absolute;
+  background: linear-gradient(to top, 
+    transparent, 
+    rgba(255,235,59,0.8), 
+    #ffeb3b);
+  box-shadow: 0 0 8px #ffeb3b;
+  left: 50%;
+  top: -25px;
+  transform: translateX(-50%) rotate(0deg);
+  width: calc(3px + var(--ray-width, 2px));
+  height: 60px;
+  border-radius: 2px;
+}
+
+.sun-rays::before { --ray-width: 1px; }
+.sun-rays::after { --ray-width: 3px; transform: translateX(-50%) rotate(45deg); }
+.sun-rays span:nth-child(1) { --ray-width: 2px; transform: translateX(-50%) rotate(90deg); }
+.sun-rays span:nth-child(2) { --ray-width: 4px; transform: translateX(-50%) rotate(135deg); }
+.sun-rays span:nth-child(3) { --ray-width: 1.5px; transform: translateX(-50%) rotate(180deg); }
+.sun-rays span:nth-child(4) { --ray-width: 3.5px; transform: translateX(-50%) rotate(225deg); }
+.sun-rays span:nth-child(5) { --ray-width: 2.5px; transform: translateX(-50%) rotate(270deg); }
+.sun-rays span:nth-child(6) { --ray-width: 1.8px; transform: translateX(-50%) rotate(315deg); }
+
+/* 云朵：分层+体积感+随机摇摆 */
+.cloud {
+  position: absolute;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.95) 0%,
+    rgba(255,255,255,0.8) 100%
+  );
+  border-radius: 50px;
+  filter: blur(10px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.05);
+  animation: 
+    cloudMove 60s linear infinite,
+    cloudFloat 15s ease-in-out infinite alternate;
+}
+
+.cloud-1 {
+  width: 200px;
+  height: 70px;
+  top: 15%;
+  left: -250px;
+}
+
+.cloud-1::before {
+  content: '';
+  position: absolute;
+  width: 100px;
+  height: 80px;
+  background: inherit;
+  border-radius: 50%;
+  top: -40px;
+  left: 30px;
+  filter: blur(10px);
+}
+
+.cloud-1::after {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 70px;
+  background: inherit;
+  border-radius: 50%;
+  top: -30px;
+  right: 20px;
+  filter: blur(10px);
+}
+
+.cloud-2 {
+  width: 120px;
+  height: 50px;
+  top: 25%;
+  right: -180px;
+  animation-delay: -15s;
+  animation-duration: 70s;
+}
+
+.cloud-2::before {
+  content: '';
+  position: absolute;
+  width: 70px;
+  height: 60px;
+  background: inherit;
+  border-radius: 50%;
+  top: -30px;
+  left: 20px;
+  filter: blur(10px);
+}
+
+/* ========== 雾/霾样式：动态透明度+流动分层 ========== */
+.fog {
+  opacity: 0.85 !important;
+  background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 80%, #80deea 100%) !important;
+}
+
+.haze {
+  opacity: 1 !important;
+  /* ✅ 修复：多背景用逗号分隔，去掉错误分号 */
+  background: 
+    linear-gradient(180deg, #9e9e9e 0%, #cfd8dc 80%, #b0bec5 100%),
+    radial-gradient(rgba(160,160,160,0.1) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 15px 15px;
+}
+
+.fog-layer {
+  position: absolute;
+  width: 250%;
+  height: 250%;
+  top: -75%;
+  left: -75%;
+  background: white;
+  border-radius: 50%;
+  filter: blur(90px);
+  /* ✅ 修复：定义变量，避免动画报错 */
+  --initial-opacity: 0.4;
+  animation: 
+    fogFlow 60s ease-in-out infinite,
+    fogFade 20s ease-in-out infinite alternate;
+}
+
+.layer-1 {
+  --initial-opacity: 0.45;
+  animation-duration: 70s;
+}
+
+.layer-2 {
+  --initial-opacity: 0.35;
+  opacity: 0.35;
+  animation-delay: -12s;
+  animation-duration: 85s;
+  filter: blur(70px);
+}
+
+.layer-3 {
+  background: #b0b0b0;
+  --initial-opacity: 0.3;
+  opacity: 0.3;
+  animation-delay: -25s;
+  animation-duration: 95s;
+  filter: blur(100px);
+}
+
+/* ========== 自定义动画关键帧 ========== */
+@keyframes sunPulse {
+  0% { transform: scale(1); box-shadow: 0 0 30px #ffeb3b, 0 0 60px rgba(255,235,59,0.8), 0 0 90px rgba(255,193,7,0.6), 0 0 120px rgba(255,152,0,0.4); }
+  100% { transform: scale(1.18); box-shadow: 0 0 40px #ffeb3b, 0 0 80px rgba(255,235,59,0.9), 0 0 110px rgba(255,193,7,0.7), 0 0 140px rgba(255,152,0,0.5); }
+}
+
+@keyframes sunSway {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-5px, 3px) rotate(1deg); }
+  50% { transform: translate(3px, -2px) rotate(-1deg); }
+  75% { transform: translate(-3px, 5px) rotate(0.5deg); }
+}
+
+@keyframes rayRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cloudMove {
+  0% { transform: translateX(0) rotate(0deg); }
+  100% { transform: translateX(calc(100vw + 350px)) rotate(2deg); }
+}
+
+@keyframes cloudFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-15px); }
+}
+
+@keyframes fogFlow {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-40px, 10px) scale(1.02); }
+  50% { transform: translate(-20px, 20px) scale(0.98); }
+  75% { transform: translate(-50px, 5px) scale(1.01); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes fogFade {
+  0% { opacity: var(--initial-opacity); }
+  100% { opacity: calc(var(--initial-opacity) - 0.1); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes snowSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes thunderFlash {
+  0%, 100% { opacity: 0; }
+  20% { opacity: 0.8; }
+  40% { opacity: 0.3; }
+  60% { opacity: 0.9; }
+  80% { opacity: 0.2; }
 }

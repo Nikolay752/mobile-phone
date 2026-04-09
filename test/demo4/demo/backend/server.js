@@ -639,8 +639,7 @@ app.post('/api/updateUserLocation', async (req, res) => {
     if (userIndex === -1) {
       return res.json({ success: false, message: '用户不存在' });
     }
-    // ✅ 修复：users[userIndex]（原错误user[userIndex]）
-    users[userIndex].lastLocation = location;
+    user[userIndex].lastLocation = location;
     let writeSuccess = false;
     const writeStart = Date.now();
     while (!writeSuccess && Date.now() - writeStart < FILE_LOCK_TIMEOUT) {
@@ -648,8 +647,7 @@ app.post('/api/updateUserLocation', async (req, res) => {
         fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
         writeSuccess = true;
       } catch (e) {
-        // ✅ 修复：e.code（原错误e, code）
-        if (e.code === 'EBUSY' || e.code === 'EACCES') {
+        if (e.code === 'EBUSY' || e, code === 'EACCES') {
           await setTimeout(100);
         } else {
           throw e;

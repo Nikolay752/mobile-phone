@@ -1,28 +1,28 @@
 [
   {
-    "id": 1775715964206,
+    "id": 1775717947583,
     "username": "wulian101",
     "password": "123456",
     "role": "student",
     "class": "物联2301",
-    "createTime": "2026-04-09T14:26:04.206Z",
+    "createTime": "2026-04-09T14:59:07.583Z",
     "isLoading": true,
-    "loginTime": "2026-04-09T14:39:17.456Z",
+    "loginTime": "2026-04-09T16:29:50.374Z",
     "logoutTime": null,
-    "highestScore": 0,
+    "highestScore": 8000,
     "lastLocation": "杭州市余杭区"
   },
   {
-    "id": 1775716810716,
+    "id": 1775718023293,
     "username": "wulian201",
     "password": "123456",
     "role": "student",
-    "class": "物联2301",
-    "createTime": "2026-04-09T14:40:10.716Z",
+    "class": "物联2302",
+    "createTime": "2026-04-09T15:00:23.293Z",
     "isLoading": true,
-    "loginTime": "2026-04-09T14:43:11.739Z",
+    "loginTime": "2026-04-09T15:01:50.827Z",
     "logoutTime": null,
-    "highestScore": 0,
+    "highestScore": 1800,
     "lastLocation": "杭州市余杭区"
   }
 ]
