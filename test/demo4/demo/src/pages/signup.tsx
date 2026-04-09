@@ -16,6 +16,7 @@ export default function SignupPage() {
     const [userRole, setUserRole] = useState<string>('student'); // 默认学生角色
     const [loading, setLoading] = useState<boolean>(false);
     const [className, setClassName] = useState<string>('');
+    const [pwdStrength ,setPwdStrength] = useState<number>(0);
 
     const navigate = useNavigate();
 
@@ -56,6 +57,10 @@ export default function SignupPage() {
         if (!username.trim()) { alert('请输入用户名！'); return; }
         if (password.length < 6) { alert('密码长度不能少于6位！'); return; }
         if (password !== confirmPwd) { alert('两次输入的密码不一致！'); return; }
+        if(!checkPwdStrength(password)){
+            alert('密码强度过低，需包含至少两种类型（大写字母、小写字母、数字、特殊字符）')
+            return;
+        }
         // 所有角色都校验班级（删除原有的学生角色判断）
         if (!className.trim()) {
             alert('请选择班级！');
@@ -102,6 +107,19 @@ export default function SignupPage() {
         { label: '大数据2301', value: '大数据2301' }
     ];
 
+    //注册时检测密码强度
+    const checkPwdStrength = (pwd: string) => {
+        const hasUpper = /[A-Z]/.test(pwd);
+        const hasLower = /[a-z]/.test(pwd);
+        const hasNumber = /\d/.test(pwd);
+        const hasSpecial = /[!@#$%^&*()]/.test(pwd);
+        const strength = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+        //实时显示密码强度
+        setPwdStrength(strength);
+        return strength >= 2;
+    }
+
     return (
         <div className={Mainstyle.main}>
             <div className={Mainstyle.header}>
@@ -128,7 +146,10 @@ export default function SignupPage() {
                     type="password"
                     placeholder="请设置密码（不少于6位）"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) =>{
+                        setPassword(e.target.value);
+                        checkPwdStrength(e.target.value);
+                    }}
                     onKeyDown={handleKeyDown}
                     disabled={loading}
                 />
