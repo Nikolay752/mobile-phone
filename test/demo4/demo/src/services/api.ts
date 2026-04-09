@@ -115,3 +115,62 @@ export async function getHighestScore(params: { username: string }): Promise<Sco
     };
   }
 }
+
+export interface RegeoResponse {
+  success: boolean ;
+  data: {
+    city: string ;
+    adcode : string;
+    address : string;
+  };
+}
+/**
+ * 逆地理编码：经纬度转城市/地址
+ * @param params { lng: 经度, lat: 纬度 }
+ */
+export async function getRegeoByLatLng(params: { lng: string | number; lat: string | number }): Promise<RegeoResponse> {
+  try {
+    return await request<RegeoResponse>(`${API_BASE_URL}/geo/regeo`, {
+      method: 'GET',
+      params, // GET请求传params
+    });
+  } catch (err) {
+    console.error('逆地理编码接口调用失败:', err);
+    // 兜底返回北京
+    return {
+      success: false,
+      data: { city: '北京', adcode: '110000', address: '北京市' }
+    };
+  }
+}
+
+export interface UpdateLocationResponse {
+  success:boolean;
+  message:string;
+  data?:{
+    username:string;
+    lastLocation:string;
+  };
+}
+/**
+ * 更新用户最后定位地址
+ * @param params { username: 用户名, location: 定位地址 }
+ */
+export async function updateUserLocation(params: {
+  username: string;
+  location: string;
+}): Promise<UpdateLocationResponse> {
+  try {
+    return await request<UpdateLocationResponse>(`${API_BASE_URL}/updateUserLocation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: params,
+    });
+  } catch (err) {
+    console.error('更新用户定位地址失败:', err);
+    return {
+      success: false,
+      message: '更新定位地址接口调用失败',
+    };
+  }
+}

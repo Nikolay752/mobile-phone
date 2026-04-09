@@ -80,6 +80,8 @@ export default function Layout() {
 
         setIsLoggedIn(true);
         localStorage.setItem('userInfo', JSON.stringify(res.userInfo));
+        localStorage.setItem('currentUser', res.userInfo.username);
+
         // 跳转到游戏页
       } else {
         alert(res.message || '登录失败');

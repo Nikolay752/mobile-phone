@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'umi';
 import { WeatherBackground, WeatherIconMap } from '../layouts/WeatherBG/weather'; // 引入天气图标映射
 import styles from '../layouts/weatherPage.less';
+import { getRegeoByLatLng, updateUserLocation } from '../services/api';
 
 // 定义接口返回数据的类型（TS类型校验）
 interface WeatherResData {
@@ -39,37 +40,79 @@ function WeatherPage() {
     });
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
+    const getDeviceLocation = async (): Promise<{ lng: number; lat: number } | null> => {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                console.warn('浏览器不支持地理定位');
+                resolve(null);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { longitude: lng, latitude: lat } = position.coords;
+                    resolve({ lng, lat });
+                },
+                (err) => {
+                    console.error('获取设备定位失败:', err);
+                    resolve(null);
+                },
+                { timeout: 5000, enableHighAccuracy: true }
+            );
+        });
+    };
+
+    const fetchWeather = async (lng?: number, lat?: number) => {
+        try {
+            setIsLoading(true);
+            let url = '/api/weather';
+            // 🔴 修复：$(lng) → ${lng}，模板字符串语法错误
+            if (lng && lat) {
+                url += `?lng=${lng}&lat=${lat}`;
+            }
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data: WeatherRes = await res.json();
+            const resData = data?.data?.data?.[0] || { ...weatherData };
+            resData.city = resData.city?.trim() || '北京';
+            setWeatherData(resData);
+        } catch (err) {
+            console.error('请求天气接口失败：', err);
+            setWeatherData(prev => ({ ...prev, city: '北京' }));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
     // 生命周期钩子：请求天气接口
     useEffect(() => {
-        const fetchWeather = async () => {
-            try {
-                setIsLoading(true);
-                const res = await fetch('/api/weather', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data: WeatherRes = await res.json();
-                // 取第一个数据项，若不存在则用兜底值
-                const resData = data?.data?.data?.[0] || {
-                    ...weatherData,
-                    city:'北京',
-                };
-                setWeatherData(resData);
-            } catch (err) {
-                console.error('请求天气接口失败：', err);
-                setWeatherData(prev => ({ ...prev,city:'北京'}));
-            } finally {
-                setIsLoading(false);
+        const init = async () => {
+            const location = await getDeviceLocation();
+            const currentUser = localStorage.getItem('currentUser');
+            let cityName = '';
+            if (location) {
+                const regeoRes = await getRegeoByLatLng(location);
+                cityName = regeoRes.data.city;
+                console.log('当前定位城市：', cityName);
+                await fetchWeather(location.lng, location.lat);
+                if (currentUser && cityName) {
+                    await updateUserLocation({
+                        username: currentUser,
+                        location: cityName,
+                    });
+                }
+            } else {
+                await fetchWeather();
             }
-        };
 
-        fetchWeather();
-        // 5分钟刷新一次
-        const timer = setInterval(fetchWeather, 5 * 60 * 1000);
-        return () => clearInterval(timer);
+            const timer = setInterval(() => {
+                fetchWeather(location?.lng, location?.lat);
+            }, 5 * 60 * 1000);
+            return () => clearInterval(timer);
+        };
+        init();
     }, []);
 
     if (isLoading) {
@@ -138,9 +181,9 @@ function WeatherPage() {
                 zIndex: 1
             }}>实时天气</h1>
 
-        <button className={styles.backButton} onClick={handleBackClick}>
-            back
-        </button>
+            <button className={styles.backButton} onClick={handleBackClick}>
+                back
+            </button>
         </div>
     );
 }

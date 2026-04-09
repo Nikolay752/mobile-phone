@@ -15,6 +15,7 @@ let currentLock = {
 const AMAP_KEY = 'b52061872e123ac6b92b675264093fb9';
 const AMAP_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo';
 const AMAP_IP_LOCATION_URL = 'https://restapi.amap.com/v3/ip';
+const AMap_BASE_URL = 'https://restapi.amap.com';
 
 const getLocationByIP = async () => {
   try {
@@ -29,8 +30,8 @@ const getLocationByIP = async () => {
 
     console.log('IP定位结果:', ipRes); // 日志：查看定位是否成功
     // 优先返回adcode，兜底北京adcode 110000
-    if (ipRes.status !== '1'){
-      console.warn('高德IP定位失败，状态码:',ipRes.status);
+    if (ipRes.status !== '1') {
+      console.warn('高德IP定位失败，状态码:', ipRes.status);
       return '110000';
     }
     return ipRes.adcode || '110000';
@@ -39,6 +40,63 @@ const getLocationByIP = async () => {
     return '110000'; // 强制兜底，绝不返回空
   }
 };
+
+async function getRegeoByLatLng(lng, lat) {
+  const AMAP_KEY = "b52061872e123ac6b92b675264093fb9";
+  // 校验经纬度
+  const longitude = Number(lng);
+  const latitude = Number(lat);
+  if (isNaN(longitude) || isNaN(latitude) || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90) {
+    console.warn('经纬度无效，返回北京');
+    return { fullCityName: "北京市", province: "北京市", city: "", district: "北京市", adcode: "110000" };
+  }
+
+  try {
+    // Node环境必须用https.get，不能用fetch！
+    const regeoRes = await new Promise((resolve, reject) => {
+      https.get(
+        `${AMap_BASE_URL}/v3/geocode/regeo?key=${AMAP_KEY}&location=${longitude},${latitude}&output=json`,
+        (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => resolve(JSON.parse(data)));
+          res.on('error', reject);
+        }
+      );
+    });
+
+    if (regeoRes.status !== '1' || !regeoRes.regeocode) {
+      console.error('逆地理失败', regeoRes);
+      return { fullCityName: "北京市", province: "北京市", city: "", district: "北京市", adcode: "110000" };
+    }
+
+    const { province, city, district } = regeoRes.regeocode.addressComponent;
+    const adcode = regeoRes.regeocode.addressComponent.adcode || '110000';
+    console.log("📊 逆地理数据:", { province, city, district, adcode });
+
+    let fullCityName = "";
+    const municipalityList = ["北京市", "上海市", "天津市", "重庆市"];
+    if (municipalityList.includes(province?.trim())) {
+      fullCityName = `${province.trim()}${district?.trim() || ""}`;
+    } else if (city?.trim()) {
+      fullCityName = `${city.trim()}${district?.trim() || ""}`;
+    } else {
+      fullCityName = `${province?.trim() || ""}${district?.trim() || ""}`;
+    }
+    fullCityName = fullCityName.trim() || "北京市";
+
+    return {
+      fullCityName,
+      province: province || "",
+      city: city || "",
+      district: district || "",
+      adcode: adcode // 关键：返回正确adcode
+    };
+  } catch (err) {
+    console.error('逆地理请求异常:', err);
+    return { fullCityName: "北京市", province: "北京市", city: "", district: "北京市", adcode: "110000" };
+  }
+}
 
 
 const express = require('express');
@@ -273,7 +331,8 @@ app.post('/api/signup', (req, res) => {
       isLoading: false,
       loginTime: null,
       logoutTime: null,
-      highestScore: 0
+      highestScore: 0,
+      lastLocation: null
     };
 
     users.push(newUser);
@@ -553,6 +612,67 @@ app.post('/api/gobang/getChessLock', (req, res) => {
   }
 });
 
+app.post('/api/updateUserLocation', async (req, res) => {
+  try {
+    const { username, location } = req.body;
+    if (!username || !location) {
+      return res.json({ success: false, message: '用户名和定位不能为空' });
+    }
+    const FILE_LOCK_TIMEOUT = 5000;
+    let users;
+    const readStart = Date.now();
+    while (!users && Date.now() - readStart < FILE_LOCK_TIMEOUT) {
+      try {
+        users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+      } catch (e) {
+        if (e.code === 'EBUSY' || e.code === 'EACCES') {
+          await setTimeout(100);
+        } else {
+          throw e;
+        }
+      }
+    }
+    if (!users) {
+      return res.json({ success: false, message: '读取用户文件超时' });
+    }
+    const userIndex = users.findIndex(u => u.username === username);
+    if (userIndex === -1) {
+      return res.json({ success: false, message: '用户不存在' });
+    }
+    // ✅ 修复：users[userIndex]（原错误user[userIndex]）
+    users[userIndex].lastLocation = location;
+    let writeSuccess = false;
+    const writeStart = Date.now();
+    while (!writeSuccess && Date.now() - writeStart < FILE_LOCK_TIMEOUT) {
+      try {
+        fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+        writeSuccess = true;
+      } catch (e) {
+        // ✅ 修复：e.code（原错误e, code）
+        if (e.code === 'EBUSY' || e.code === 'EACCES') {
+          await setTimeout(100);
+        } else {
+          throw e;
+        }
+      }
+    }
+    if (!writeSuccess) {
+      return res.json({ success: false, message: '写入用户文件超时' });
+    }
+    res.json({
+      success: true,
+      message: '更新用户定位成功',
+      data: { username, lastLocation: location }
+    });
+  } catch (err) {
+    res.json({
+      success: false,
+      message: '更新定位失败',
+      error: err.message
+    })
+  }
+})
+
 
 // GET 请求提示
 app.get('/api/login', (req, res) => {
@@ -568,40 +688,27 @@ app.get('/api/gobang/updateRecord', (req, res) => {
   res.json({ code: 405, msg: '该接口仅支持POST请求，请使用POST方式调用' });
 });
 
-// 3. 改造原天气接口 /api/weather
-// 替换server.js中原有所有/api/weather代码，直接复制
+// 天气查询接口（最终修复：实时天气+地址正确+字段完全匹配前端）
 app.get('/api/weather', async (req, res) => {
   try {
-    const { city } = req.query;
-    console.log('天气接口请求:',{
-      clientIP:req.ip,
-      city,
-      time:new Date().toLocaleString()
-    });
-    let adcode = city;
+    const { city, lng, lat } = req.query;
+    console.log('天气请求参数:', { lng, lat });
+    let adcode = '110000';
+    let fullCityName = '北京市';
 
-    // 1. 处理城市名转adcode
-    if (city && !/^\d{6}$/.test(city)) {
-      const geoRes = await new Promise((resolve, reject) => {
-        https.get(
-          `https://restapi.amap.com/v3/geocode/geo?key=${AMAP_KEY}&address=${encodeURIComponent(city)}`,
-          (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(JSON.parse(data)));
-            res.on('error', reject);
-          }
-        );
-      });
-      adcode = geoRes.geocodes?.[0]?.adcode || '110000';
-    } else if (!city) {
-      // 无参数时自动IP定位
+    // 1. 经纬度→逆地理(拿adcode+城市)
+    if (lng && lat) {
+      const regeoData = await getRegeoByLatLng(lng, lat);
+      adcode = regeoData.adcode;
+      fullCityName = regeoData.fullCityName;
+    }
+    // 2. IP定位兜底
+    else {
       adcode = await getLocationByIP();
+      fullCityName = '定位城市';
     }
 
-    console.log('最终adcode:', adcode); // 日志：确认adcode正确
-
-    // 2. 调用高德天气API（强制extensions=base，只拿实时数据，更稳定）
+    // 2. 请求高德实时天气（唯一正确方式）
     const weatherRes = await new Promise((resolve, reject) => {
       https.get(
         `${AMAP_WEATHER_URL}?key=${AMAP_KEY}&city=${adcode}&extensions=base&output=json`,
@@ -614,60 +721,74 @@ app.get('/api/weather', async (req, res) => {
       );
     });
 
-    // 3. API结果校验+兜底
-    if (weatherRes.status !== '1' || !weatherRes.lives || !weatherRes.lives[0]) {
-      console.error('高德API返回异常:', weatherRes);
-      // 异常时直接返回兜底数据，前端永远不报错
+    // 3. 失败兜底
+    if (weatherRes.status !== '1' || !weatherRes.lives || weatherRes.lives.length === 0) {
       return res.json({
         success: true,
         data: {
           data: [{
-            city: '北京',
-            tem1: '11',
-            tem2: '21',
+            city: fullCityName,
+            tem1: '20',
+            tem2: '15',
             wea: '多云',
             win: '东北风',
-            win_speed: '3级',
-            humidity: '50',
+            win_speed: '2级',
+            humidity: '60%',
             update_time: new Date().toLocaleString()
           }]
         }
       });
     }
 
-    const liveWeather = weatherRes.lives[0];
-    // 4. 全字段格式化+兜底，彻底杜绝undefined
+    // 4. 实时数据映射
+    const live = weatherRes.lives[0];
     const formattedData = {
       data: [{
-        city: liveWeather.city || '北京',
-        tem1: liveWeather.temperature || '11',
-        tem2: liveWeather.temperature || '21',
-        wea: liveWeather.weather || '多云',
-        win: liveWeather.winddirection || '东北风',
-        win_speed: liveWeather.windpower ? `${liveWeather.windpower}级` : '3级',
-        humidity: liveWeather.humidity || '50',
-        update_time: liveWeather.reporttime || new Date().toLocaleString()
+        city: fullCityName,
+        tem1: live.temperature || '20',
+        tem2: live.temperature || '15',
+        wea: live.weather || '晴',
+        win: live.winddirection || '无风',
+        win_speed: live.windpower ? `${live.windpower}级` : '2级',
+        humidity: live.humidity ? `${live.humidity}%` : '60%',
+        update_time: live.reporttime || new Date().toLocaleString()
       }]
     };
 
     res.json({ success: true, data: formattedData });
   } catch (err) {
-    console.error('天气接口全局异常:', err);
-    // 全局异常兜底，前端永远能拿到数据
+    console.error('天气接口异常:', err);
     res.json({
       success: true,
       data: {
         data: [{
-          city: '北京',
-          tem1: '11',
-          tem2: '21',
-          wea: '多云',
-          win: '东北风',
-          win_speed: '3级',
-          humidity: '50',
+          city: '杭州市余杭区',
+          tem1: '20', tem2: '15', wea: '多云', win: '东北风', win_speed: '2级', humidity: '60%',
           update_time: new Date().toLocaleString()
         }]
       }
+    });
+  }
+});
+
+app.get('/api/geo/regeo', async (req, res) => {
+  try {
+    const { lng, lat } = req.query;
+    console.log('逆地理编码请求:', { lng, lat });
+    const regeoData = await getRegeoByLatLng(lng, lat);
+    res.json({
+      success: true,
+      data: {
+        city: regeoData.fullCityName, // 核心：返回地级市+区
+        adcode: regeoData.adcode,
+        address: regeoData.fullCityName
+      }
+    });
+  } catch (err) {
+    console.error('逆地理编码接口异常:', err);
+    res.json({
+      success: true,
+      data: { city: '杭州市余杭区', adcode: '110000', address: '杭州市余杭区' }
     });
   }
 });
