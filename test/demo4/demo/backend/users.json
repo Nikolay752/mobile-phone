@@ -1,3 +1,28 @@
 [
-
+  {
+    "id": 1775726728761,
+    "username": "wulian101",
+    "password": "qweasd1",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-09T17:25:28.761Z",
+    "isLoading": true,
+    "loginTime": "2026-04-09T18:18:01.714Z",
+    "logoutTime": null,
+    "highestScore": 0,
+    "lastLocation": null
+  },
+  {
+    "id": 1775727692170,
+    "username": "wulian102",
+    "password": "qweasd1",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-09T17:41:32.170Z",
+    "isLoading": true,
+    "loginTime": "2026-04-09T18:13:27.697Z",
+    "logoutTime": null,
+    "highestScore": 0,
+    "lastLocation": null
+  }
 ]

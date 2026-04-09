@@ -13,6 +13,8 @@ export default function Layout() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginFailCount, setLoginFailCount] = useState(0);
+  const [loginLockTime, setLoginLockTime] = useState(0);
   // 导航和功能列表
   const { functionList } = Items();
   const navigate = useNavigate();
@@ -58,14 +60,44 @@ export default function Layout() {
     // 监听 localStorage 变化（跨页面修改时实时同步）
     window.addEventListener('storage', restoreLoginState);
 
+    //初始化时恢复锁定状态
+    const lockTime = localStorage.getItem('loginLockTime');
+    if (lockTime) setLoginLockTime(Number(lockTime));
+
+    //静止默认退出
+    let idleTimer: NodeJS.Timeout;
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        handleLogout();
+        alert('长时间未操作，默认退出');
+      }, 5 * 60 * 1000);
+    };
+    //
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    window.addEventListener('touchstart', resetTimer);
+    window.addEventListener('touchmove', resetTimer);
+    window.addEventListener('click', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+    resetTimer();
+
     // 清除定时器和监听
     return () => {
       clearInterval(timer);
       window.removeEventListener('storage', restoreLoginState);
+      clearTimeout(idleTimer);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
     };
   }, []);
 
   const handleLogin = async () => {
+    //检测账号是否被锁定
+    if (loginLockTime > Date.now()) {
+      alert(`你的设备已锁定，剩余${Math.ceil((loginLockTime - Date.now()) / 1000)}秒`)
+      return;
+    }
     try {
       setLoading(true);
       const res = await login({ username, password });
@@ -82,9 +114,21 @@ export default function Layout() {
         localStorage.setItem('userInfo', JSON.stringify(res.userInfo));
         localStorage.setItem('currentUser', res.userInfo.username);
 
+        //登录成功后，剩余次数变成5
+        setLoginFailCount(0);
+        setLoginLockTime(0);
+        localStorage.removeItem('loginLockTime');
+
         // 跳转到游戏页
       } else {
-        alert(res.message || '登录失败');
+        const newCount = loginFailCount + 1;
+        setLoginFailCount(newCount);
+        if (newCount >= 5) {
+          setLoginLockTime(Date.now() + 5 * 60 * 1000);
+          localStorage.setItem('loginLockTime', String(Date.now() + 5 * 60 * 1000))
+        } else {
+          alert(`密码错误，登录失败，你还有${5 - newCount}次机会`)
+        }
       }
     } catch (error) {
       console.error('登录失败：', error);
