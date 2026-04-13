@@ -6,9 +6,9 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-09T17:25:28.761Z",
-    "isLoading": false,
-    "loginTime": "2026-04-13T10:41:49.392Z",
-    "logoutTime": "2026-04-13T10:42:06.131Z",
+    "isLoading": true,
+    "loginTime": "2026-04-13T13:13:46.101Z",
+    "logoutTime": null,
     "highestScore": 0,
     "lastLocation": "杭州市余杭区"
   },
@@ -22,6 +22,19 @@
     "isLoading": false,
     "loginTime": "2026-04-10T10:47:16.285Z",
     "logoutTime": "2026-04-10T10:48:07.583Z",
+    "highestScore": 0,
+    "lastLocation": null
+  },
+  {
+    "id": 1776048582284,
+    "username": "wulianT1",
+    "password": "qweasd1",
+    "role": "teacher",
+    "class": "物联2301",
+    "createTime": "2026-04-13T10:49:42.284Z",
+    "isLoading": true,
+    "loginTime": "2026-04-13T13:30:18.113Z",
+    "logoutTime": null,
     "highestScore": 0,
     "lastLocation": null
   }

@@ -27,17 +27,21 @@ const getLocationByIP = async () => {
         res.on('error', reject);
       });
     });
+    console.log('✅ IP定位结果:', ipRes);
 
-    console.log('IP定位结果:', ipRes); // 日志：查看定位是否成功
-    // 优先返回adcode，兜底北京adcode 110000
     if (ipRes.status !== '1') {
-      console.warn('高德IP定位失败，状态码:', ipRes.status);
-      return '110000';
+      console.warn('高德IP定位失败');
+      return { city: '北京市', adcode: '110000' };
     }
-    return ipRes.adcode || '110000';
+
+    // 正确返回 IP 定位的城市 + adcode
+    return {
+      city: ipRes.city || '北京市',
+      adcode: ipRes.adcode || '110000'
+    };
   } catch (err) {
-    console.error('IP定位失败，默认北京:', err);
-    return '110000'; // 强制兜底，绝不返回空
+    console.error('IP定位异常', err);
+    return { city: '北京市', adcode: '110000' };
   }
 };
 
@@ -706,85 +710,100 @@ app.get('/api/gobang/updateRecord', (req, res) => {
   res.json({ code: 405, msg: '该接口仅支持POST请求，请使用POST方式调用' });
 });
 
-// 天气查询接口（最终修复：实时天气+地址正确+字段完全匹配前端）
+// 天气查询接口（最终修复：GPS失败→IP精确定位区县市+显示真实城市）
 app.get('/api/weather', async (req, res) => {
   try {
-    const { city, lng, lat } = req.query;
-    console.log('天气请求参数:', { lng, lat });
+    const { lng, lat } = req.query;
+    console.log('📡 定位方式：', lng && lat ? 'GPS' : 'IP');
+
     let adcode = '110000';
     let fullCityName = '北京市';
 
-    // 1. 经纬度→逆地理(拿adcode+城市)
+    // 1. 有经纬度 → 用GPS
     if (lng && lat) {
       const regeoData = await getRegeoByLatLng(lng, lat);
       adcode = regeoData.adcode;
       fullCityName = regeoData.fullCityName;
     }
-    // 2. IP定位兜底
+    // 2. 无GPS → 强制用IP定位结果
     else {
-      adcode = await getLocationByIP();
-      fullCityName = '定位城市';
+      const ipInfo = await getLocationByIP();
+      adcode = ipInfo.adcode;
+      fullCityName = ipInfo.city;
+      console.log('📍 使用IP定位查询天气：', fullCityName, adcode);
     }
 
-    // 2. 请求高德实时天气（唯一正确方式）
+    // 3. 用真实 adcode 查询当地天气（关键！）
     const weatherRes = await new Promise((resolve, reject) => {
       https.get(
         `${AMAP_WEATHER_URL}?key=${AMAP_KEY}&city=${adcode}&extensions=base&output=json`,
-        (res) => {
+        (resp) => {
           let data = '';
-          res.on('data', chunk => data += chunk);
-          res.on('end', () => resolve(JSON.parse(data)));
-          res.on('error', reject);
+          resp.on('data', (chunk) => (data += chunk));
+          resp.on('end', () => resolve(JSON.parse(data)));
+          resp.on('error', reject);
         }
       );
     });
 
-    // 失败兜底
+    // 4. 天气接口失败 → 仍显示IP定位城市
     if (weatherRes.status !== '1' || !weatherRes.lives || weatherRes.lives.length === 0) {
       return res.json({
         success: true,
         data: {
-          data: [{
+          data: [
+            {
+              city: fullCityName,
+              tem1: '20',
+              tem2: '15',
+              wea: '多云',
+              win: '东北风',
+              win_speed: '2级',
+              humidity: '60%',
+              update_time: new Date().toLocaleString(),
+            },
+          ],
+        },
+      });
+    }
+
+    // 5. 返回真实天气 + IP定位城市
+    const live = weatherRes.lives[0];
+    res.json({
+      success: true,
+      data: {
+        data: [
+          {
             city: fullCityName,
+            tem1: live.temperature || '20',
+            tem2: live.temperature || '15',
+            wea: live.weather || '晴',
+            win: live.winddirection || '无风',
+            win_speed: live.windpower ? `${live.windpower}级` : '2级',
+            humidity: live.humidity ? `${live.humidity}%` : '60%',
+            update_time: live.reporttime || new Date().toLocaleString(),
+          },
+        ],
+      },
+    });
+  } catch (err) {
+    console.error('天气接口异常:', err);
+    res.json({
+      success: true,
+      data: {
+        data: [
+          {
+            city: 'IP定位城市',
             tem1: '20',
             tem2: '15',
             wea: '多云',
             win: '东北风',
             win_speed: '2级',
             humidity: '60%',
-            update_time: new Date().toLocaleString()
-          }]
-        }
-      });
-    }
-
-    // 4. 实时数据映射
-    const live = weatherRes.lives[0];
-    const formattedData = {
-      data: [{
-        city: fullCityName,
-        tem1: live.temperature || '20',
-        tem2: live.temperature || '15',
-        wea: live.weather || '晴',
-        win: live.winddirection || '无风',
-        win_speed: live.windpower ? `${live.windpower}级` : '2级',
-        humidity: live.humidity ? `${live.humidity}%` : '60%',
-        update_time: live.reporttime || new Date().toLocaleString()
-      }]
-    };
-
-    res.json({ success: true, data: formattedData });
-  } catch (err) {
-    console.error('天气接口异常:', err);
-    res.json({
-      success: true,
-      data: {
-        data: [{
-          city: '杭州市余杭区',
-          tem1: '20', tem2: '15', wea: '多云', win: '东北风', win_speed: '2级', humidity: '60%',
-          update_time: new Date().toLocaleString()
-        }]
-      }
+            update_time: new Date().toLocaleString(),
+          },
+        ],
+      },
     });
   }
 });
@@ -804,10 +823,6 @@ app.get('/api/geo/regeo', async (req, res) => {
     });
   } catch (err) {
     console.error('逆地理编码接口异常:', err);
-    res.json({
-      success: true,
-      data: { city: '杭州市余杭区', adcode: '110000', address: '杭州市余杭区' }
-    });
   }
 });
 

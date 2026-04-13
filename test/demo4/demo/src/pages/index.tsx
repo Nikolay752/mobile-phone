@@ -6,7 +6,7 @@ import { KeyboardEvent } from 'react';
 import Items from '../layouts/items';
 import { getUserLoadingStatus, login, LoginResponse, logout, resetUserLoadingStatus } from '../services/api';
 
-const INACTIVE_TIMEOUT = 15 * 1000;
+const INACTIVE_TIMEOUT = 15 * 60 * 1000;
 
 export default function Layout() {
   // 状态管理
@@ -86,7 +86,11 @@ export default function Layout() {
   //自动登出（自动登出修改点3）
   const handleAutoLogout = async () => {
     if (!isLoggedIn) return;
-    const currentUser = localStorage.getItem('currentUser');
+    //const currentUser = localStorage.getItem('currentUser');
+
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+
+    const currentUser = localStorage.getItem('currentUser')
     if (currentUser) {
       try {
         await logout({ username: currentUser });
@@ -103,7 +107,7 @@ export default function Layout() {
   };
   //重置计时器（自动登出修改点4）
   const resetLogoutTimer = () => {
-    if(!isLoggedIn){
+    if (!isLoggedIn) {
       if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
       return;
     }
@@ -114,9 +118,10 @@ export default function Layout() {
   //绑定用户操作监听（自动登出修改点5）
   const bindUserActivityListeners = () => {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    if(!isLoggedIn){
-      return () => {};
+    if (!isLoggedIn) {
+      return () => { };
     }
+    const handler = resetLogoutTimer ;
     events.forEach(event => window.addEventListener(event, resetLogoutTimer));
     return () => {
       events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
@@ -175,6 +180,7 @@ export default function Layout() {
     };
     window.addEventListener('storage', handleStorageChange);
 
+    /*
     // 闲置退出逻辑（关键修复：排除输入框事件）
     let idleTimer: NodeJS.Timeout;
     const resetTimer = () => {
@@ -185,7 +191,7 @@ export default function Layout() {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         handleLogout();
-      }, 15 * 1000);
+      }, 15 * 60 * 1000);
     };
 
     // 修复：全局事件不拦截输入框的操作
@@ -210,14 +216,15 @@ export default function Layout() {
       events.forEach(event => window.addEventListener(event, handleGlobalEvent));
       resetTimer();
     }
+    */
 
     // 清除副作用
     return () => {
       clearInterval(timer);
       clearInterval(pollTimer);
       window.removeEventListener('storage', handleStorageChange);
-      clearTimeout(idleTimer);
-      events.forEach(event => window.removeEventListener(event, handleGlobalEvent));
+      //clearTimeout(idleTimer);
+      //events.forEach(event => window.removeEventListener(event, handleGlobalEvent));
       removeActivityListeners();
     };
   }, [isLoggedIn, username, restoreLoginState, fetchUsersJson]); // 精准依赖

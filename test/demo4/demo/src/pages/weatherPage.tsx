@@ -24,7 +24,7 @@ interface WeatherRes {
 }
 
 //自动登出修改点2
-const INACTIVE_TIMEOUT = 15 * 1000;
+const INACTIVE_TIMEOUT = 15 * 60 * 1000;
 
 function WeatherPage() {
     const navigate = useNavigate();

@@ -11,7 +11,7 @@ import { clear } from "echarts/types/src/util/throttle.js";
 import { resetUserLoadingStatus, logout } from "@/services/api";
 
 //默认退出时间
-const INACTIVE_TIMEOUT = 15 * 1000;
+const INACTIVE_TIMEOUT = 15 * 60 * 1000;
 
 export default function SystemPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -512,7 +512,7 @@ export default function SystemPage() {
 
     // 清除定时器
     return () => {
-      
+
       if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
       removeEventListener();
 
