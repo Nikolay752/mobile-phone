@@ -174,3 +174,60 @@ export async function updateUserLocation(params: {
     };
   }
 }
+
+export interface ResetLoadingStatusResponse {
+  success:boolean;
+  message:string;
+  isLoading:boolean;
+}
+/**
+ * 重置用户登录状态（isLoading）
+ * @param params { username }
+ */
+export async function resetUserLoadingStatus(params: {
+  username: string;
+}): Promise<ResetLoadingStatusResponse> {
+  try {
+    return await request<ResetLoadingStatusResponse>(`${API_BASE_URL}/resetUserLoadingStatus`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: params,
+    });
+  } catch (err) {
+    console.error('重置登录状态接口调用失败:', err);
+    return {
+      success: false,
+      message: '重置登录状态失败',
+      isLoading: true
+    };
+  }
+}
+
+export interface UserLoadingStatusResponse{
+  success:boolean;
+  message:string;
+  isLoading:boolean;
+}
+/**
+ * 获取用户登录状态（isLoading）
+ * @param params { username }
+ */
+export async function getUserLoadingStatus(params: {
+  username: string;
+}): Promise<UserLoadingStatusResponse> {
+  try {
+    return await request<UserLoadingStatusResponse>(`${API_BASE_URL}/getUserLoadingStatus`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: params,
+    });
+  } catch (err) {
+    console.error('获取用户登录状态失败:', err);
+    // 兜底返回false，避免前端异常
+    return {
+      success: false,
+      message: '获取状态失败',
+      isLoading: false
+    };
+  }
+}

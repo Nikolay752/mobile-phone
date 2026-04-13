@@ -119,6 +119,9 @@ const BOARD_SIZE = 15;
 const GOBANG_RECORD_PATH = path.join(__dirname, 'gobang-record.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
 
+app.use(express.json());
+app.use(cors());
+
 // 跨域配置
 app.use(cors({
   origin: '*',
@@ -141,7 +144,7 @@ const initDefaultRecord = () => ({
 // 定时重置所有用户的登录状态（修复版）
 const autoResetLoadingStatus = async () => {
   const FILE_LOCK_TIMEOUT = 5000;
-
+  const RESET_TIMEOUT = 20 * 1000 ;
   while (true) {
     try {
       // 1. 读取用户文件（增加超时保护）
@@ -158,7 +161,23 @@ const autoResetLoadingStatus = async () => {
           }
         }
       }
-
+      if (!users) continue;
+      //isLoading = true 且超时 ，重置isLoading
+      // 修复：变量名统一为 updatedUsers + 修复getTime()
+      const updatedUsers = users.map(user => {
+        if (user.isLoading) {
+          const loginTime = user.loginTime ? new Date(user.loginTime).getTime() : 0;
+          const now = Date.now();
+          if (now - loginTime > RESET_TIMEOUT || !user.loginTime){
+            return {
+              ...user,
+              isLoading:false,
+              logoutTime:user.logoutTime || getBeijingTimeISO()
+            };
+          }
+        }
+        return user;
+      })
       // 3. 写入文件
       let writeSuccess = false;
       const writeStart = Date.now();
@@ -174,11 +193,9 @@ const autoResetLoadingStatus = async () => {
           }
         }
       }
-
     } catch (err) {
+      console.error('定时重置登录状态失败',err);
     }
-
-
     // 固定10秒间隔
     await setTimeout(10 * 1000);
   }
@@ -265,7 +282,6 @@ app.post('/api/login', (req, res) => {
 });
 
 // 退出登录接口
-// 退出登录接口（修复完整版）
 app.post('/api/logout', (req, res) => {
   try {
     const { username } = req.body;
@@ -396,12 +412,16 @@ app.post('/api/resetUserLoadingStatus', (req, res) => {
     }
 
     users[userIndex].isLoading = false;
-    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+    if (!users[userIndex].logoutTime){
+      users[userIndex].logoutTime = getBeijingTimeISO();
+    }
+    fs.writeFileSync(USERS_PATH,JSON.stringify(users,null,2),'utf8');
 
     res.json({
       success: true,
       message: '重置登录状态成功',
-      isLoading: users[userIndex].isLoading
+      isLoading: users[userIndex].isLoading,
+      logoutTime:users[userIndex].logoutTime
     });
   } catch (err) {
     res.json({ success: false, message: '重置状态失败', error: err.message });
@@ -639,7 +659,7 @@ app.post('/api/updateUserLocation', async (req, res) => {
     if (userIndex === -1) {
       return res.json({ success: false, message: '用户不存在' });
     }
-    user[userIndex].lastLocation = location;
+    users[userIndex].lastLocation = location;
     let writeSuccess = false;
     const writeStart = Date.now();
     while (!writeSuccess && Date.now() - writeStart < FILE_LOCK_TIMEOUT) {
@@ -647,7 +667,7 @@ app.post('/api/updateUserLocation', async (req, res) => {
         fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
         writeSuccess = true;
       } catch (e) {
-        if (e.code === 'EBUSY' || e, code === 'EACCES') {
+        if (e.code === 'EBUSY' || e.code === 'EACCES') {
           await setTimeout(100);
         } else {
           throw e;
@@ -719,7 +739,7 @@ app.get('/api/weather', async (req, res) => {
       );
     });
 
-    // 3. 失败兜底
+    // 失败兜底
     if (weatherRes.status !== '1' || !weatherRes.lives || weatherRes.lives.length === 0) {
       return res.json({
         success: true,
@@ -791,17 +811,27 @@ app.get('/api/geo/regeo', async (req, res) => {
   }
 });
 
-//获取城市，默认北京
-const getCity = async () => {
+app.get('/api/get-isLoading',(req,res)=>{
   try {
-    const res = await fetch("https://ipapi.co/json/");
-    const data = await res.json();
-    return data.city || "北京";
-  } catch {
-    console.error("定位失败，默认北京");
-    return "北京";
+    const userPath = path.join(__dirname,'users.json');
+    const userData = JSON.parse(fs.readFileSync(userPath,'utf8'));
+    res.json({isLoading:userData.isLoading});
+  }catch(error){
+    res.status(500).json({error:'读取状态失败',isLoading:false});
   }
-}
+});
+
+app.post('/api/set-isLoading-false',(req,res) => {
+  try {
+    const userPath = path.join(__dirname,'users.json');
+    const userData = JSON.parse(fs.readFileSync(userPath,'utf8'));
+    userData.isLoading = false ;
+    fs.writeFileSync(userPath,JSON.stringify(userData,null,2));
+    res.json({success:true,isLoading:userData.isLoading});
+  }catch(error){
+    res.status(500).json({success:false1,error:'修改状态失败'});
+  }
+});
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, '../dist')));

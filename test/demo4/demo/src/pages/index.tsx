@@ -1,10 +1,12 @@
 import { Link, useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle.less';
 import btnstyles from '../layouts/button_login.less';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KeyboardEvent } from 'react';
 import Items from '../layouts/items';
-import { login, LoginResponse, logout } from '@/services/api';
+import { getUserLoadingStatus, login, LoginResponse, logout, resetUserLoadingStatus } from '../services/api';
+
+const INACTIVE_TIMEOUT = 15 * 1000;
 
 export default function Layout() {
   // 状态管理
@@ -18,6 +20,8 @@ export default function Layout() {
   // 导航和功能列表
   const { functionList } = Items();
   const navigate = useNavigate();
+  const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // 格式化时间
   const formatTime = () => {
@@ -31,69 +35,194 @@ export default function Layout() {
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
   };
 
-  // 优化：统一的登录状态恢复逻辑
-  const restoreLoginState = () => {
-    const savedToken = localStorage.getItem('token');
-    const savedIsLoggedIn = localStorage.getItem('isLoggedIn');
+  const restoreLoginState = useCallback(async () => {
     const savedUsername = localStorage.getItem('username');
-
-    // 双重校验：token存在 或 isLoggedIn标识为true，都判定为已登录
-    const loginState = !!(savedToken || savedIsLoggedIn === 'true');
-    setIsLoggedIn(loginState);
-    if (loginState && savedUsername) {
+    // 仅在输入框为空且有保存的用户名时，调用接口同步状态
+    if (username === '' && savedUsername) {
+      const res = await getUserLoadingStatus({ username: savedUsername });
+      // 服务端isLoading → 前端isLoggedIn
+      const loginState = res.success ? res.isLoading : false;
+      setIsLoggedIn(loginState);
       setUsername(savedUsername);
-    } else {
+    } else if (username === '') {
+      // 无保存用户名，重置状态
+      setIsLoggedIn(false);
+    }
+
+    // 恢复锁定状态（原有逻辑）
+    if (loginLockTime === 0) {
+      const lockTime = localStorage.getItem('loginLockTime');
+      if (lockTime) setLoginLockTime(Number(lockTime));
+    }
+  }, [username, loginLockTime]);
+
+  const handleLogout = async () => {
+    const savedUsername = localStorage.getItem('username') || username;
+    if (!savedUsername) {
+      localStorage.clear();
+      setIsLoggedIn(false);
       setUsername('');
+      setPassword('');
+      return;
+    }
+
+    try {
+      await logout({ username: savedUsername });
+    } catch (logoutErr) {
+      console.error('登出接口调用失败，尝试兜底重置isLoading:', logoutErr);
+      try {
+        await resetUserLoadingStatus({ username: savedUsername });
+      } catch (resetErr) {
+        console.error('重置isLoading也失败:', resetErr);
+      }
+    } finally {
+      setIsLoggedIn(false);
+      setUsername('');
+      setPassword('');
+      localStorage.clear();
     }
   };
+
+  //自动登出（自动登出修改点3）
+  const handleAutoLogout = async () => {
+    if (!isLoggedIn) return;
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+      try {
+        await logout({ username: currentUser });
+        console.log('自动登出：已重置 isLoading 为 false');
+      } catch (err) {
+        console.error('自动登出重置状态失败：', err);
+        await resetUserLoadingStatus({ username: currentUser })
+      }
+    }
+    localStorage.removeItem('currentUser');
+    navigate('/');
+    alert('长时间未操作，默认退出');
+    setIsLoggedIn(false);
+  };
+  //重置计时器（自动登出修改点4）
+  const resetLogoutTimer = () => {
+    if(!isLoggedIn){
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+      return;
+    }
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    logoutTimerRef.current = setTimeout(handleAutoLogout, INACTIVE_TIMEOUT);
+  };
+
+  //绑定用户操作监听（自动登出修改点5）
+  const bindUserActivityListeners = () => {
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    if(!isLoggedIn){
+      return () => {};
+    }
+    events.forEach(event => window.addEventListener(event, resetLogoutTimer));
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
+    };
+  };
+
+  //获取users.json并赋值isLoggedIn
+  const fetchUsersJson = useCallback(async () => {
+    try {
+      const savedUsername = localStorage.getItem('username');
+      if (!savedUsername) {
+        setIsLoggedIn(false);
+        return;
+      }
+
+      const response = await fetch('/users.json');
+      if (!response.ok) throw new Error('获取用户数据失败');
+
+      const users = await response.json();
+      const currentUser = users.find((user: any) => user.username === savedUsername);
+      if (currentUser) {
+        setIsLoggedIn(currentUser.isLoading);
+      } else {
+        setIsLoggedIn(false);
+        localStorage.removeItem('username');
+      }
+    } catch (error) {
+      console.log('获取users.josn失败', error);
+    }
+  }, []);
 
   // 时间更新 + 登录状态恢复
   useEffect(() => {
     // 初始化时间
     setCurrentTime(formatTime());
-    // 每秒更新时间
     const timer = setInterval(() => setCurrentTime(formatTime()), 1000);
 
-    // 初始化时立即恢复登录状态
+    // 初始化时恢复登录状态
     restoreLoginState();
 
+    //自动登出修改点6
+    const removeActivityListeners = bindUserActivityListeners();
+    const init = async () => {
+      resetLogoutTimer();
+    };
+    init();
+
+    const pollTimer = setInterval(fetchUsersJson, 500);
+
     // 监听 localStorage 变化（跨页面修改时实时同步）
-    window.addEventListener('storage', restoreLoginState);
+    const handleStorageChange = () => {
+      // 仅在未登录状态下同步（输入中不干扰）
+      if (!isLoggedIn && username === '') {
+        restoreLoginState();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
 
-    //初始化时恢复锁定状态
-    const lockTime = localStorage.getItem('loginLockTime');
-    if (lockTime) setLoginLockTime(Number(lockTime));
-
-    //静止默认退出
+    // 闲置退出逻辑（关键修复：排除输入框事件）
     let idleTimer: NodeJS.Timeout;
     const resetTimer = () => {
-      clearTimeout(idleTimer);
+      if (!isLoggedIn) {
+        if (idleTimer) clearTimeout(idleTimer);
+        return;
+      }
+      if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         handleLogout();
-        alert('长时间未操作，默认退出');
-      }, 5 * 60 * 1000);
+      }, 15 * 1000);
     };
-    //
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keydown', resetTimer);
-    window.addEventListener('touchstart', resetTimer);
-    window.addEventListener('touchmove', resetTimer);
-    window.addEventListener('click', resetTimer);
-    window.addEventListener('scroll', resetTimer);
-    resetTimer();
 
-    // 清除定时器和监听
+    // 修复：全局事件不拦截输入框的操作
+    const handleGlobalEvent = (e: Event) => {
+      //未登录时不处理任何事件
+      if (!isLoggedIn) return;
+
+      if (!(e.target instanceof HTMLInputElement)) {
+        resetTimer();
+        return;
+      }
+      // 排除输入框的事件源
+      const target = e.target as HTMLInputElement;
+      if (target.type === 'text' || target.type === 'password') {
+        return;
+      }
+      resetTimer();
+    };
+
+    const events = ['mousemove', 'keydown', 'touchstart', 'touchmove', 'click', 'scroll'];
+    if (isLoggedIn) {
+      events.forEach(event => window.addEventListener(event, handleGlobalEvent));
+      resetTimer();
+    }
+
+    // 清除副作用
     return () => {
       clearInterval(timer);
-      window.removeEventListener('storage', restoreLoginState);
+      clearInterval(pollTimer);
+      window.removeEventListener('storage', handleStorageChange);
       clearTimeout(idleTimer);
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('keydown', resetTimer);
+      events.forEach(event => window.removeEventListener(event, handleGlobalEvent));
+      removeActivityListeners();
     };
-  }, []);
+  }, [isLoggedIn, username, restoreLoginState, fetchUsersJson]); // 精准依赖
 
   const handleLogin = async () => {
-    //检测账号是否被锁定
     if (loginLockTime > Date.now()) {
       alert(`你的设备已锁定，剩余${Math.ceil((loginLockTime - Date.now()) / 1000)}秒`)
       return;
@@ -102,24 +231,20 @@ export default function Layout() {
       setLoading(true);
       const res = await login({ username, password });
       if (res.success) {
-        // ✅ 临时用固定字符串代替 token，绕过校验
         localStorage.setItem('token', 'fake_token_for_test');
         localStorage.setItem('role', res.userInfo.role);
         localStorage.setItem('username', res.userInfo.username);
         localStorage.setItem('class', res.userInfo.class);
-        // 新增：显式设置登录状态标识
         localStorage.setItem('isLoggedIn', 'true');
 
         setIsLoggedIn(true);
         localStorage.setItem('userInfo', JSON.stringify(res.userInfo));
         localStorage.setItem('currentUser', res.userInfo.username);
 
-        //登录成功后，剩余次数变成5
         setLoginFailCount(0);
         setLoginLockTime(0);
         localStorage.removeItem('loginLockTime');
 
-        // 跳转到游戏页
       } else {
         const newCount = loginFailCount + 1;
         setLoginFailCount(newCount);
@@ -138,38 +263,24 @@ export default function Layout() {
     }
   };
 
-  // 注册跳转
   const handleSignup = () => {
     navigate('/signup');
   };
 
-  // 回车登录
+  // 回车登录（优化：仅在输入框聚焦时触发）
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isLoggedIn && username) {
+      e.preventDefault(); // 阻止默认行为，避免页面刷新
       handleLogin();
-    }
-  };
-
-  // 优化：登出时清空所有登录标识
-  const handleLogout = async () => {
-    try {
-      await logout({ username });
-      setIsLoggedIn(false);
-      setUsername('');
-      setPassword('');
-      localStorage.clear(); // 清空所有localStorage
-    } catch (error) {
-      console.error('登出失败：', error);
     }
   };
 
   // 渲染页面
   return (
     <div className={Mainstyle.main}>
-
       {/* 主体内容 */}
       {!isLoggedIn ? (
-        // 未登录状态：登录表单
+        // 未登录状态：登录表单（关键修复：增加autoComplete、name等属性）
         <div className={Mainstyle.body}>
           <p className='login'>Please Login</p>
           <input
@@ -179,6 +290,9 @@ export default function Layout() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             onKeyDown={handleKeyDown}
+            autoComplete="off" // 禁用自动填充
+            name="username"    // 增加name属性，避免浏览器拦截
+            disabled={loading} // 加载时禁用输入（可选）
           />
           <input
             className={Mainstyle.input}
@@ -187,6 +301,9 @@ export default function Layout() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={handleKeyDown}
+            autoComplete="new-password" // 禁用密码自动填充
+            name="password"             // 增加name属性
+            disabled={loading}          // 加载时禁用输入（可选）
           />
           <button className={btnstyles.button} onClick={handleLogin} disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}

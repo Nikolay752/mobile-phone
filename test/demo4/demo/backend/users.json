@@ -6,11 +6,11 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-09T17:25:28.761Z",
-    "isLoading": true,
-    "loginTime": "2026-04-09T18:18:01.714Z",
-    "logoutTime": null,
+    "isLoading": false,
+    "loginTime": "2026-04-13T10:41:49.392Z",
+    "logoutTime": "2026-04-13T10:42:06.131Z",
     "highestScore": 0,
-    "lastLocation": null
+    "lastLocation": "杭州市余杭区"
   },
   {
     "id": 1775727692170,
@@ -19,9 +19,9 @@
     "role": "student",
     "class": "物联2301",
     "createTime": "2026-04-09T17:41:32.170Z",
-    "isLoading": true,
-    "loginTime": "2026-04-09T18:13:27.697Z",
-    "logoutTime": null,
+    "isLoading": false,
+    "loginTime": "2026-04-10T10:47:16.285Z",
+    "logoutTime": "2026-04-10T10:48:07.583Z",
     "highestScore": 0,
     "lastLocation": null
   }
