@@ -5,8 +5,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { KeyboardEvent } from 'react';
 import Items from '../layouts/items';
 import { getUserLoadingStatus, login, LoginResponse, logout, resetUserLoadingStatus } from '../services/api';
+import { useAutoLogout } from '@/Hook/useAutoLogout';
 
-const INACTIVE_TIMEOUT = 15 * 60 * 1000;
+
 
 export default function Layout() {
   // 状态管理
@@ -22,6 +23,16 @@ export default function Layout() {
   const navigate = useNavigate();
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  /*==========全局自动登出Hook==========*/
+  const { clearLogoutTimer } = useAutoLogout({
+    isLoggedIn,
+    onLogout: () => {
+      setIsLoggedIn(false);
+      setUsername('');
+      setPassword('');
+    },
+  });
 
   // 格式化时间
   const formatTime = () => {
@@ -56,6 +67,7 @@ export default function Layout() {
     }
   }, [username, loginLockTime]);
 
+  /* ==========登出========== */
   const handleLogout = async () => {
     const savedUsername = localStorage.getItem('username') || username;
     if (!savedUsername) {
@@ -83,51 +95,6 @@ export default function Layout() {
     }
   };
 
-  //自动登出（自动登出修改点3）
-  const handleAutoLogout = async () => {
-    if (!isLoggedIn) return;
-    //const currentUser = localStorage.getItem('currentUser');
-
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-
-    const currentUser = localStorage.getItem('currentUser')
-    if (currentUser) {
-      try {
-        await logout({ username: currentUser });
-        console.log('自动登出：已重置 isLoading 为 false');
-      } catch (err) {
-        console.error('自动登出重置状态失败：', err);
-        await resetUserLoadingStatus({ username: currentUser })
-      }
-    }
-    localStorage.removeItem('currentUser');
-    navigate('/');
-    alert('长时间未操作，默认退出');
-    setIsLoggedIn(false);
-  };
-  //重置计时器（自动登出修改点4）
-  const resetLogoutTimer = () => {
-    if (!isLoggedIn) {
-      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-      return;
-    }
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    logoutTimerRef.current = setTimeout(handleAutoLogout, INACTIVE_TIMEOUT);
-  };
-
-  //绑定用户操作监听（自动登出修改点5）
-  const bindUserActivityListeners = () => {
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    if (!isLoggedIn) {
-      return () => { };
-    }
-    const handler = resetLogoutTimer ;
-    events.forEach(event => window.addEventListener(event, resetLogoutTimer));
-    return () => {
-      events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
-    };
-  };
-
   //获取users.json并赋值isLoggedIn
   const fetchUsersJson = useCallback(async () => {
     try {
@@ -137,19 +104,20 @@ export default function Layout() {
         return;
       }
 
-      const response = await fetch('/users.json');
+      const response = await fetch('/api/users');
       if (!response.ok) throw new Error('获取用户数据失败');
-
-      const users = await response.json();
-      const currentUser = users.find((user: any) => user.username === savedUsername);
-      if (currentUser) {
-        setIsLoggedIn(currentUser.isLoading);
-      } else {
-        setIsLoggedIn(false);
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message);
+      const users = result.data;
+      const currentUser = users.find((user:any) => user.username === savedUsername);
+      if (currentUser){
+        setIsLoading(currentUser.isLoading);
+      }else{
+        setIsLoading(false);
         localStorage.removeItem('username');
       }
     } catch (error) {
-      console.log('获取users.josn失败', error);
+      console.log('获取users.json失败', error);
     }
   }, []);
 
@@ -162,13 +130,6 @@ export default function Layout() {
     // 初始化时恢复登录状态
     restoreLoginState();
 
-    //自动登出修改点6
-    const removeActivityListeners = bindUserActivityListeners();
-    const init = async () => {
-      resetLogoutTimer();
-    };
-    init();
-
     const pollTimer = setInterval(fetchUsersJson, 500);
 
     // 监听 localStorage 变化（跨页面修改时实时同步）
@@ -180,54 +141,15 @@ export default function Layout() {
     };
     window.addEventListener('storage', handleStorageChange);
 
-    /*
-    // 闲置退出逻辑（关键修复：排除输入框事件）
-    let idleTimer: NodeJS.Timeout;
-    const resetTimer = () => {
-      if (!isLoggedIn) {
-        if (idleTimer) clearTimeout(idleTimer);
-        return;
-      }
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        handleLogout();
-      }, 15 * 60 * 1000);
-    };
-
-    // 修复：全局事件不拦截输入框的操作
-    const handleGlobalEvent = (e: Event) => {
-      //未登录时不处理任何事件
-      if (!isLoggedIn) return;
-
-      if (!(e.target instanceof HTMLInputElement)) {
-        resetTimer();
-        return;
-      }
-      // 排除输入框的事件源
-      const target = e.target as HTMLInputElement;
-      if (target.type === 'text' || target.type === 'password') {
-        return;
-      }
-      resetTimer();
-    };
-
-    const events = ['mousemove', 'keydown', 'touchstart', 'touchmove', 'click', 'scroll'];
-    if (isLoggedIn) {
-      events.forEach(event => window.addEventListener(event, handleGlobalEvent));
-      resetTimer();
-    }
-    */
-
     // 清除副作用
     return () => {
       clearInterval(timer);
       clearInterval(pollTimer);
       window.removeEventListener('storage', handleStorageChange);
-      //clearTimeout(idleTimer);
+      clearLogoutTimer();
       //events.forEach(event => window.removeEventListener(event, handleGlobalEvent));
-      removeActivityListeners();
     };
-  }, [isLoggedIn, username, restoreLoginState, fetchUsersJson]); // 精准依赖
+  }, [isLoggedIn, username, restoreLoginState, fetchUsersJson,clearLogoutTimer]); // 精准依赖
 
   const handleLogin = async () => {
     if (loginLockTime > Date.now()) {

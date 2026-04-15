@@ -7,7 +7,7 @@
     "class": "物联2301",
     "createTime": "2026-04-09T17:25:28.761Z",
     "isLoading": true,
-    "loginTime": "2026-04-13T13:13:46.101Z",
+    "loginTime": "2026-04-15T15:33:06.434",
     "logoutTime": null,
     "highestScore": 0,
     "lastLocation": "杭州市余杭区"
@@ -20,10 +20,10 @@
     "class": "物联2301",
     "createTime": "2026-04-09T17:41:32.170Z",
     "isLoading": false,
-    "loginTime": "2026-04-10T10:47:16.285Z",
-    "logoutTime": "2026-04-10T10:48:07.583Z",
+    "loginTime": "2026-04-14T17:43:50.273",
+    "logoutTime": "2026-04-14T17:44:39.879",
     "highestScore": 0,
-    "lastLocation": null
+    "lastLocation": "杭州市余杭区"
   },
   {
     "id": 1776048582284,
@@ -32,10 +32,23 @@
     "role": "teacher",
     "class": "物联2301",
     "createTime": "2026-04-13T10:49:42.284Z",
-    "isLoading": true,
-    "loginTime": "2026-04-13T13:30:18.113Z",
-    "logoutTime": null,
+    "isLoading": false,
+    "loginTime": "2026-04-15T13:33:51.712",
+    "logoutTime": "2026-04-15T13:35:26.434",
+    "highestScore": 100,
+    "lastLocation": "杭州市余杭区"
+  },
+  {
+    "id": 1776151266647,
+    "username": "wulian103",
+    "password": "qweiop1",
+    "role": "student",
+    "class": "物联2301",
+    "createTime": "2026-04-14T15:21:06.647Z",
+    "isLoading": false,
+    "loginTime": "2026-04-14T08:02:58.627Z",
+    "logoutTime": "2026-04-14T08:04:31.859Z",
     "highestScore": 0,
-    "lastLocation": null
+    "lastLocation": "杭州市"
   }
 ]

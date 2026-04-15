@@ -3,6 +3,7 @@ import { useNavigate } from 'umi';
 import { WeatherBackground, WeatherIconMap } from '../layouts/WeatherBG/weather'; // 引入天气图标映射
 import styles from '../layouts/weatherPage.less';
 import { getRegeoByLatLng, updateUserLocation, resetUserLoadingStatus, logout } from '../services/api';
+import { useAutoLogout } from '@/Hook/useAutoLogout';
 //自动登出修改点1
 
 // 定义接口返回数据的类型（TS类型校验）
@@ -23,47 +24,23 @@ interface WeatherRes {
     };
 }
 
-//自动登出修改点2
-const INACTIVE_TIMEOUT = 15 * 60 * 1000;
-
 function WeatherPage() {
     const navigate = useNavigate();
-    const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
     const handleBackClick = () => {
         navigate('/')
     }
 
-    //自动登出（自动登出修改点3）
-    const handleAutoLogout = async () => {
-        const currentUser = localStorage.getItem('currentUser');
-        if (currentUser) {
-            try {
-                await logout({ username: currentUser });
-                console.log('自动登出：已重置 isLoading 为 false');
-            } catch (err) {
-                console.error('自动登出重置状态失败：', err);
-                await resetUserLoadingStatus({ username: currentUser })
-            }
+    //自动登出第一部分
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
+
+    const { resetLogoutTimer, clearLogoutTimer } = useAutoLogout({
+        isLoggedIn,
+        onLogout: () => {
+            setIsLoggedIn(false);
+            localStorage.clear();
+            navigate('/');
         }
-        localStorage.removeItem('currentUser');
-        navigate('/');
-        alert('长时间未操作，默认退出');
-    };
-
-    //重置计时器（自动登出修改点4）
-    const resetLogoutTimer = () => {
-        if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-        logoutTimerRef.current = setTimeout(handleAutoLogout, INACTIVE_TIMEOUT);
-    };
-
-    //绑定用户操作监听（自动登出修改点5）
-    const bindUserActivityListeners = () => {
-        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-        events.forEach(event => window.addEventListener(event,resetLogoutTimer));
-        return () => {
-            events.forEach(event => window.removeEventListener(event, resetLogoutTimer));
-        };
-    };
+    })
 
     // 保存完整的天气数据（替代仅保存weather），初始化兜底值
     const [weatherData, setWeatherData] = useState<WeatherResData>({
@@ -104,9 +81,15 @@ function WeatherPage() {
         try {
             setIsLoading(true);
             let url = '/api/weather';
+            const currentUser = localStorage.getItem('currentUser');
+            const Params = new URLSearchParams();
+            if (currentUser) Params.append('username', currentUser);
             if (lng && lat) {
-                url += `?lng=${lng}&lat=${lat}`;
+                Params.append('lng', lng.toString());
+                Params.append('lat', lat.toString());
             }
+
+            url += Params.toString() ? `?${Params.toString()}` : ''
             const res = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
@@ -123,23 +106,19 @@ function WeatherPage() {
         }
     };
 
-
     // 生命周期钩子：请求天气接口
     useEffect(() => {
         let weatherTimer: NodeJS.Timeout | null = null;
-        //自动登出修改点6
-        const removeActivityListeners = bindUserActivityListeners();
         const init = async () => {
-            resetLogoutTimer();
             const location = await getDeviceLocation();
-            if (location){
+            if (location) {
                 const currentUser = localStorage.getItem('currentUser');
-                if (currentUser){
-                    try{
-                        const regeoRes = await getRegeoByLatLng({lng:location.lng,lat:location.lat});
-                        await updateUserLocation({username:currentUser,location:regeoRes.data.city});
-                    }catch(err){
-                        console.error('更新lastLcation失败',err)
+                if (currentUser) {
+                    try {
+                        const regeoRes = await getRegeoByLatLng({ lng: location.lng, lat: location.lat });
+                        await updateUserLocation({ username: currentUser, location: regeoRes.data.city });
+                    } catch (err) {
+                        console.error('更新lastLcation失败', err)
                     }
                 }
             }
@@ -153,13 +132,11 @@ function WeatherPage() {
         init();
 
         // 组件卸载→清理定时器（退出页面彻底停请求）
-        //自动登出修改点7
         return () => {
             if (weatherTimer) clearInterval(weatherTimer);
-            if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-            removeActivityListeners();
+            clearLogoutTimer();
         };
-    }, []);
+    }, [clearLogoutTimer]);
 
     if (isLoading) {
         return (
@@ -218,14 +195,7 @@ function WeatherPage() {
             </div>
 
             {/* 页面标题（可选保留） */}
-            <h1 style={{
-                textAlign: 'center',
-                paddingTop: '50px',
-                color: '#000000',
-                textShadow: '0 0 8px #000',
-                position: 'relative',
-                zIndex: 1
-            }}>实时天气</h1>
+            <h1 className={styles.title}>实时天气</h1>
 
             <button className={styles.backButton} onClick={handleBackClick}>
                 back

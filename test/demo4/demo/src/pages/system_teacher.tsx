@@ -9,6 +9,7 @@ import Collage from "@/layouts/Charts/Collage";
 import ClassDistribution from "@/layouts/Charts/ClassDistribution";
 import { classScheduleMap, mockCreditMap, mockCollage, mockClassDistribution } from "@/mockData/teacherData";
 import Refresh from "@/layouts/Refresh";
+import { useAutoLogout } from "@/Hook/useAutoLogout";
 
 export default function SystemPage() {
     const [currentTime, setCurrentTime] = useState<string>('');
@@ -25,6 +26,18 @@ export default function SystemPage() {
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [chartsLoading, setChartsLoading] = useState<boolean>(false);
 
+    /*==========自动登出第一部分========== */
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
+    const { resetLogoutTimer, clearLogoutTimer } = useAutoLogout({
+        isLoggedIn,
+        onLogout: () => {
+            setIsLoggedIn(false);
+            localStorage.clear();
+            navigate('/')
+        }
+    });
+    /*============================== */
+
     // 时间格式化（和学生系统保持一致）
     const formatTime = () => {
         const date = new Date();
@@ -39,6 +52,7 @@ export default function SystemPage() {
 
     const handleRefreshCharts = async () => {
         if (refreshing) return; // 防止重复点击
+        resetLogoutTimer();
         setRefreshing(true);
         setChartsLoading(true); // 仅让图表模块显示加载中
         try {
@@ -87,6 +101,7 @@ export default function SystemPage() {
     };
 
     useEffect(() => {
+
         // 初始化实时时间
         setCurrentTime(formatTime());
         const timer = setInterval(() => setCurrentTime(formatTime()), 1000);
@@ -96,6 +111,8 @@ export default function SystemPage() {
         const role = localStorage.getItem('role');
         const name = localStorage.getItem('username');
         const teacherClass = localStorage.getItem('class'); // 新增：读取教师授课班级
+
+
 
         // 未登录：跳转登录页（提前清定时器）
         if (!token) {
@@ -120,9 +137,13 @@ export default function SystemPage() {
         // 加载对应班级的图表数据
         fetchChartData(teacherClass || '物联2301');
 
-        // 清除定时器
-        return () => clearInterval(timer);
-    }, [navigate]);
+        const init = async () => {};
+        init();
+        return () => {
+            clearLogoutTimer();
+        };
+
+    }, [navigate,clearLogoutTimer]);
 
     // 加载中/错误兜底（和学生系统保持一致）
     if (loading) {
@@ -157,7 +178,7 @@ export default function SystemPage() {
                         <div style={{ textAlign: 'center', padding: '20px' }}>课表刷新中...</div>
                     ) : scheduleData.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '20px' }}>暂无课表数据</div>
-                    ): (
+                    ) : (
                         <TeacherScheduleChart scheduleData={scheduleData} />
                     )}
                 </div>

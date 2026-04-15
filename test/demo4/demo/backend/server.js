@@ -1,7 +1,14 @@
 function getBeijingTimeISO() {
   const now = new Date();
-  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  return beijingTime.toISOString();
+  // 强制取东八区时间分量，直接拼接标准格式
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}`;
 }
 
 const PLAYER_LOCK_TIMEOUT = 5000;
@@ -17,24 +24,32 @@ const AMAP_WEATHER_URL = 'https://restapi.amap.com/v3/weather/weatherInfo';
 const AMAP_IP_LOCATION_URL = 'https://restapi.amap.com/v3/ip';
 const AMap_BASE_URL = 'https://restapi.amap.com';
 
+
+//通过IP获取所在地
 const getLocationByIP = async () => {
   try {
     const ipRes = await new Promise((resolve, reject) => {
-      https.get(`${AMAP_IP_LOCATION_URL}?key=${AMAP_KEY}`, (res) => {
+      // ✅ 关键修复：把 output-json 改成 output=json
+      https.get(`${AMAP_IP_LOCATION_URL}?key=${AMAP_KEY}&output=json`, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
-        res.on('end', () => resolve(JSON.parse(data)));
+        res.on('end', () => {
+          try {
+            const jsonData = JSON.parse(data);
+            resolve(jsonData);
+          } catch (e) {
+            console.error('IP定位返回非JSON格式', data);
+            resolve({ status: '0' });
+          }
+        });
         res.on('error', reject);
       });
     });
-    console.log('✅ IP定位结果:', ipRes);
 
     if (ipRes.status !== '1') {
       console.warn('高德IP定位失败');
       return { city: '北京市', adcode: '110000' };
     }
-
-    // 正确返回 IP 定位的城市 + adcode
     return {
       city: ipRes.city || '北京市',
       adcode: ipRes.adcode || '110000'
@@ -44,7 +59,75 @@ const getLocationByIP = async () => {
     return { city: '北京市', adcode: '110000' };
   }
 };
+//通过IP定位更新lastLocation
+const updateUserLocationByIP = async (username) => {
+  try {
+    //获取IP定位
+    const ipLocation = await getLocationByIP();
+    const locationStr = ipLocation.city?.trim() || '北京市';
+    console.log(`[IP定位更新]用户${username}，目标地址：${locationStr}`);
 
+    //读取用户文件
+    const FILE_LOCK_TIMEOUT = 5000;
+    let users;
+    const readStart = Date.now();
+    while (!users && Date.now() - readStart < FILE_LOCK_TIMEOUT) {
+      try {
+        users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+      } catch (e) {
+        if (e.code === 'EBUSY' || e.code === 'EACCES') {
+          console.warn(`[文件锁定]读取users.json失败，重试中：${e.code}`);
+          await setTimeout(100);
+        } else {
+          throw new Error(`读取用户文件失败，${e.message}`);
+        }
+      }
+    }
+    //读取超时处理
+    if (!users) {
+      console.error(`[超时]读取users.json超时`);
+      return false;
+    }
+
+    //找到对应用户
+    const userIndex = users.findIndex(u => u.username === username);
+    if (userIndex === -1) {
+      console.warn(`用户${username}不存在`);
+      return false;
+    }
+
+    users[userIndex].lastLocation = locationStr;
+    console.log(`[更新]${username}：${users[userIndex].lastLocation} → ${locationStr}`)
+
+    //写入文件
+    let writeSuccess = false;
+    const writeStart = Date.now();
+    while (!writeSuccess && Date.now() - writeStart < FILE_LOCK_TIMEOUT) {
+      try {
+        fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
+        writeSuccess = true;
+      } catch (e) {
+        if (e.code === 'EBUSY' || e.code === 'EACCES') {
+          await setTimeout(100);
+        } else {
+          throw new Error(`写入异常:${e.message}`);
+        }
+      }
+    }
+    //写入超时处理
+    if (!writeSuccess) {
+      console.error(`[超时]写入users.json失败`);
+      return false;
+    }
+    console.log(`[成功]${username} lastLocation=${locationStr}`);
+    return true;
+  } catch (err) {
+    console.error(`[失败]更新定位失败：`, err);
+    return false;
+  }
+}
+
+//获取坐标位置
 async function getRegeoByLatLng(lng, lat) {
   const AMAP_KEY = "b52061872e123ac6b92b675264093fb9";
   // 校验经纬度
@@ -115,13 +198,13 @@ const { setTimeout } = require('timers/promises');
 const { resolve } = require('dns');
 const { rejects } = require('assert');
 
-const HTTPS_PORT = 8443;
-const HTTP_PORT = 8000;
-const BOARD_SIZE = 15;
-
 // 路径定义
 const GOBANG_RECORD_PATH = path.join(__dirname, 'gobang-record.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
+
+const HTTPS_PORT = 8443;
+const HTTP_PORT = 8000;
+const BOARD_SIZE = 15;
 
 app.use(express.json());
 app.use(cors());
@@ -145,10 +228,10 @@ const initDefaultRecord = () => ({
   updateTime: getBeijingTimeISO(),
 });
 
-// 定时重置所有用户的登录状态（修复版）
+// 定时重置所有用户的登录状态
 const autoResetLoadingStatus = async () => {
   const FILE_LOCK_TIMEOUT = 5000;
-  const RESET_TIMEOUT = 20 * 1000 ;
+  const RESET_TIMEOUT = 15 * 60 * 1000;
   while (true) {
     try {
       // 1. 读取用户文件（增加超时保护）
@@ -172,11 +255,11 @@ const autoResetLoadingStatus = async () => {
         if (user.isLoading) {
           const loginTime = user.loginTime ? new Date(user.loginTime).getTime() : 0;
           const now = Date.now();
-          if (now - loginTime > RESET_TIMEOUT || !user.loginTime){
+          if (now - loginTime > RESET_TIMEOUT || !user.loginTime) {
             return {
               ...user,
-              isLoading:false,
-              logoutTime:user.logoutTime || getBeijingTimeISO()
+              isLoading: false,
+              logoutTime: user.logoutTime || getBeijingTimeISO()
             };
           }
         }
@@ -198,7 +281,7 @@ const autoResetLoadingStatus = async () => {
         }
       }
     } catch (err) {
-      console.error('定时重置登录状态失败',err);
+      console.error('定时重置登录状态失败', err);
     }
     // 固定10秒间隔
     await setTimeout(10 * 1000);
@@ -416,16 +499,16 @@ app.post('/api/resetUserLoadingStatus', (req, res) => {
     }
 
     users[userIndex].isLoading = false;
-    if (!users[userIndex].logoutTime){
+    if (!users[userIndex].logoutTime) {
       users[userIndex].logoutTime = getBeijingTimeISO();
     }
-    fs.writeFileSync(USERS_PATH,JSON.stringify(users,null,2),'utf8');
+    fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2), 'utf8');
 
     res.json({
       success: true,
       message: '重置登录状态成功',
       isLoading: users[userIndex].isLoading,
-      logoutTime:users[userIndex].logoutTime
+      logoutTime: users[userIndex].logoutTime
     });
   } catch (err) {
     res.json({ success: false, message: '重置状态失败', error: err.message });
@@ -713,7 +796,7 @@ app.get('/api/gobang/updateRecord', (req, res) => {
 // 天气查询接口（最终修复：GPS失败→IP精确定位区县市+显示真实城市）
 app.get('/api/weather', async (req, res) => {
   try {
-    const { lng, lat } = req.query;
+    const { lng, lat, username } = req.query;
     console.log('📡 定位方式：', lng && lat ? 'GPS' : 'IP');
 
     let adcode = '110000';
@@ -725,12 +808,20 @@ app.get('/api/weather', async (req, res) => {
       adcode = regeoData.adcode;
       fullCityName = regeoData.fullCityName;
     }
-    // 2. 无GPS → 强制用IP定位结果
+    // 无GPS → 强制用IP定位结果
     else {
       const ipInfo = await getLocationByIP();
       adcode = ipInfo.adcode;
       fullCityName = ipInfo.city;
-      console.log('📍 使用IP定位查询天气：', fullCityName, adcode);
+
+
+      if (username) {
+        const updateResult = await updateUserLocationByIP(username);
+        if (updateResult) {
+        } else {
+          console.warn(`用户${username}的lastLocation更新失败`);
+        }
+      }
     }
 
     // 3. 用真实 adcode 查询当地天气（关键！）
@@ -826,25 +917,34 @@ app.get('/api/geo/regeo', async (req, res) => {
   }
 });
 
-app.get('/api/get-isLoading',(req,res)=>{
+app.get('/api/get-isLoading', (req, res) => {
   try {
-    const userPath = path.join(__dirname,'users.json');
-    const userData = JSON.parse(fs.readFileSync(userPath,'utf8'));
-    res.json({isLoading:userData.isLoading});
-  }catch(error){
-    res.status(500).json({error:'读取状态失败',isLoading:false});
+    const userPath = path.join(__dirname, 'users.json');
+    const userData = JSON.parse(fs.readFileSync(userPath, 'utf8'));
+    res.json({ isLoading: userData.isLoading });
+  } catch (error) {
+    res.status(500).json({ error: '读取状态失败', isLoading: false });
   }
 });
 
-app.post('/api/set-isLoading-false',(req,res) => {
+app.get('/api/users', (req, res) => {
   try {
-    const userPath = path.join(__dirname,'users.json');
-    const userData = JSON.parse(fs.readFileSync(userPath,'utf8'));
-    userData.isLoading = false ;
-    fs.writeFileSync(userPath,JSON.stringify(userData,null,2));
-    res.json({success:true,isLoading:userData.isLoading});
-  }catch(error){
-    res.status(500).json({success:false1,error:'修改状态失败'});
+    const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.json({ success: false, message: '获取用户列表失败', error: err.message });
+  }
+});
+
+app.post('/api/set-isLoading-false', (req, res) => {
+  try {
+    const userPath = path.join(__dirname, 'users.json');
+    const userData = JSON.parse(fs.readFileSync(userPath, 'utf8'));
+    userData.isLoading = false;
+    fs.writeFileSync(userPath, JSON.stringify(userData, null, 2));
+    res.json({ success: true, isLoading: userData.isLoading });
+  } catch (error) {
+    res.status(500).json({ success: false, error: '修改状态失败' });
   }
 });
 

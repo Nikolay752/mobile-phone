@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef ,useState} from 'react';
 import styles from '../layouts/map.less';
 import button from "../layouts/button_back.less";
 import { useNavigate } from 'umi';
+import { useAutoLogout } from '@/Hook/useAutoLogout';
 
 declare global {
   interface Window {
@@ -23,7 +24,20 @@ const AmapComponent = () => {
   const handleBackClick = () => {
     navigate('/');
   };
+  /*==========自动登出========== */
+ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('currentUser'));
+ const [isLoading,setIsLoading] = useState<boolean>(true);
+ const { resetLogoutTimer,clearLogoutTimer } = useAutoLogout({
+  isLoggedIn,
+  onLogout:() =>{
+    setIsLoggedIn(false);
+    clearLogoutTimer();
+    navigate('/')
+  }
+ });
 
+
+ /*============================== */
   // 封装地图初始化核心逻辑
   const initMap = async () => {
     try {

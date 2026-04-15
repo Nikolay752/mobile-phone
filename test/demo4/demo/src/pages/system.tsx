@@ -8,10 +8,8 @@ import button_Stu from '../layouts/button_Stu.less';
 import Hello from "@/layouts/Hello";
 import { PageAgent } from 'page-agent';
 import { clear } from "echarts/types/src/util/throttle.js";
-import { resetUserLoadingStatus, logout } from "@/services/api";
+import { useAutoLogout } from "@/Hook/useAutoLogout";
 
-//默认退出时间
-const INACTIVE_TIMEOUT = 15 * 60 * 1000;
 
 export default function SystemPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -24,7 +22,19 @@ export default function SystemPage() {
   const panelCloseHandlerRef = useRef<(() => void) | null>(null);
   const [voiceText, setVoiceText] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
-  const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  /*==========自动登出第一部分========== */
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { resetLogoutTimer, clearLogoutTimer } = useAutoLogout({
+    isLoggedIn,
+    onLogout: () => {
+      setIsLoggedIn(false);
+      localStorage.clear();
+      navigate('/')
+    }
+  });
+  /*============================== */
 
   // 初始化 PageAgent（直接使用硬编码的API Key）
   const agent = new PageAgent({
@@ -421,39 +431,6 @@ export default function SystemPage() {
     }
   };
 
-  //==========自动登出模块==========
-  const handleAutoLogout = async () => {
-    const currentUser = localStorage.getItem('currentUser');
-    if (currentUser) {
-      try {
-        await logout({ username: currentUser });
-        console.log('自动登出：已重置 isLoading = false');
-      } catch (err) {
-        console.error('自动登出重置失败：', err);
-        await resetUserLoadingStatus({ username: currentUser })
-      }
-    }
-    localStorage.removeItem('currentUser');
-    navigate('/');
-    alert('长时间未操作，默认退出');
-  };
-
-  //重置计时器
-  const resetLogoutTimer = () => {
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    logoutTimerRef.current = setTimeout(handleAutoLogout,INACTIVE_TIMEOUT);
-  };
-
-  //绑定用户操作监听
-  const bindUserActivityListeners = () => {
-    const events = ['keydown','mousemove','click','scroll','touchstart'];
-    events.forEach(event => window.addEventListener(event,resetLogoutTimer));
-    return () => {
-      events.forEach(event => window.removeEventListener(event,resetLogoutTimer));
-    };
-  };
-  //==============================
-
   // 时间格式化
   const formatTime = () => {
     const date = new Date();
@@ -479,7 +456,6 @@ export default function SystemPage() {
 
     if (currentRole === targetRole) {
       navigate(targetPath, { replace: true });
-      console.log('跳转成功：', targetPath);
     } else {
       alert(`无${targetRole === 'student' ? '学生' : '教师'}权限！`);
     }
@@ -487,14 +463,8 @@ export default function SystemPage() {
 
   useEffect(() => {
     setCurrentTime(formatTime());
-    const removeEventListener = bindUserActivityListeners();
     const timer = setInterval(() => setCurrentTime(formatTime()), 1000);
     const token = localStorage.getItem('token');
-
-    const init = async() => {
-      resetLogoutTimer();
-    };
-    init();
 
     // 未登录时提前清除定时器+返回
     if (!token) {
@@ -510,13 +480,14 @@ export default function SystemPage() {
     setUserRole(role || '');
     setUsername(name || '');
 
+    const init = async () => {
+    };
+    init();
+
     // 清除定时器
     return () => {
-
-      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-      removeEventListener();
-
       clearInterval(timer);
+      clearLogoutTimer();
       if (audioStream) {
         audioStream.getTracks().forEach(track => track.stop());
         setAudioStream(null);
@@ -534,9 +505,8 @@ export default function SystemPage() {
       if (agent.panel) {
         agent.panel.hide();
       }
-      console.log('组件卸载：麦克风和面板资源已完全清理');
     };
-  }, [navigate, audioStream]);
+  }, [navigate, audioStream, clearLogoutTimer]);
 
   return (
     <div className={Mainstyle.main}>

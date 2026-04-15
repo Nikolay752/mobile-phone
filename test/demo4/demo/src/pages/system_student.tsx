@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from 'umi';
 import Mainstyle from '@/layouts/Mainstyle_student.less';
 import button from '@/layouts/button_back.less';
@@ -8,6 +8,7 @@ import StudentScheduleChart from "@/layouts/Charts/StudentScheduleChart";
 import Collage from "@/layouts/Charts/Collage";
 import { classScheduleMap, mockCredit, mockCollage } from "@/mockData/studentData";
 import Refresh from "@/layouts/Refresh";
+import { useAutoLogout } from "@/Hook/useAutoLogout";
 
 export default function SystemPage() {
   // 基础状态（不参与刷新）
@@ -26,9 +27,23 @@ export default function SystemPage() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const navigate = useNavigate();
 
+  /*==========自动登出第一部分========== */
+
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('isLoggedIn'));
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { resetLogoutTimer, clearLogoutTimer } = useAutoLogout({
+    isLoggedIn,
+    onLogout: () => {
+      setIsLoggedIn(false);
+      localStorage.clear();
+      navigate('/')
+    }
+  });
+  /*============================== */
   // 1. 核心：仅刷新图表数据的方法
   const handleRefreshCharts = async () => {
     if (refreshing) return; // 防止重复点击
+    resetLogoutTimer();
     setRefreshing(true);
     setChartsLoading(true); // 仅让图表模块显示加载中
     try {
@@ -45,30 +60,27 @@ export default function SystemPage() {
   };
 
   // 2. 图表数据加载函数（仅更新三个图表状态）
-  const fetchChartData = async (targetClass: string) => {
+  const fetchChartData = useCallback(async (targetClass: string) => {
     // 模拟异步请求（真实场景替换为后端接口）
     await new Promise(resolve => setTimeout(resolve, 500));
-    
     // 仅更新课表/学分/院系数据
     const newScheduleData = classScheduleMap[targetClass as keyof typeof classScheduleMap] || [];
-    const newCreditData = [...mockCredit]; // 浅拷贝，触发状态更新
-    const newCollageData = [...mockCollage]; // 浅拷贝，触发状态更新
-
+    const newCreditData = [...mockCredit];
+    const newCollageData = [...mockCollage];
     // 校验数据格式
     if (!Array.isArray(newScheduleData)) throw new Error('课表数据格式错误');
     if (!Array.isArray(newCreditData)) throw new Error('学分数据格式错误');
     if (!Array.isArray(newCollageData)) throw new Error('院系数据格式错误');
-
     // 仅更新这三个状态 → 仅触发对应模块渲染
     setScheduleData(newScheduleData);
     setCreditData(newCreditData);
     setCollageData(newCollageData);
-  };
+  }, []);
 
   // 时间格式化（不变）
   const formatTime = () => {
     const date = new Date();
-    return `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+    return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
   };
 
   // 初始化逻辑（不变）
@@ -82,6 +94,8 @@ export default function SystemPage() {
     const role = localStorage.getItem('role');
     const name = localStorage.getItem('username');
     const classInfo = localStorage.getItem('class');
+
+    setIsLoggedIn(!!token);
 
     if (!token) {
       clearInterval(timer);
@@ -104,8 +118,17 @@ export default function SystemPage() {
     // 首次加载图表数据
     fetchChartData(classInfo || '').catch(err => console.error('初始化数据失败:', err));
 
-    return () => clearInterval(timer);
-  }, [navigate]);
+    /*==========自动登出第二部分========== */
+    const init = async () => {
+    };
+    init();
+    return () => {
+      clearInterval(timer);
+      clearLogoutTimer();
+    };
+
+    /*============================== */
+  }, [navigate, clearLogoutTimer]);
 
   return (
     <div className={Mainstyle.main}>
@@ -115,11 +138,11 @@ export default function SystemPage() {
         {/* 刷新按钮：仅绑定图表刷新方法 */}
         <div onClick={handleRefreshCharts} style={{ cursor: 'pointer', margin: '0 10px' }}>
           <Refresh />
-          {refreshing }
+          {refreshing}
         </div>
         <div className={button.button} onClick={() => navigate('/system')}>
           back
-          </div>
+        </div>
       </div>
 
       {/* Body：仅这部分参与局部刷新 */}
